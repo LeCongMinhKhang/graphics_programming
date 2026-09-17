@@ -3,6 +3,18 @@
 ## Part I: Drawing basic shapes
 
 ## TODO
+### Modules
+#### Pipeline modules
+- [ ] data provider (vertices, normals, uvs, ...)
+  - [ ] obj parser
+  - [ ] textures input
+  - [ ] shaders input    
+- [ ] shader pipeline
+#### GUI modules
+- [ ] toolbar
+- [ ] GL display (rendering loop, GL interface)
+- [ ] window 
+
 ### 2D Shapes
 - [ ] triangle
 - [ ] rectangle
