@@ -3,6 +3,7 @@ def parseFile(path):
   obj = {}
   obj["v"] = []
   obj["f"] = []
+  obj["l"] = []
   with open(path) as file:
     for line in file:
       string = line.rstrip()
@@ -15,8 +16,12 @@ def parseFile(path):
             obj["v"].append(parsed)
         case "f":
           parsed = _parseFace(arr)
-          if not parsed is None and not parsed == []:
+          if not parsed is None and not parsed:
             obj["f"].append(parsed)
+        case "l":
+          parsed = _parseLineStrip(arr)
+          if not parsed is None and not parsed:
+            obj["l"].append(parsed)
         case "#":
           continue
 
@@ -48,6 +53,17 @@ def _parseFace(arr):
     return arrarr
   else:
     print(f"Parsed vertex with unknown length: {len(arr)}")
+    return None
+
+
+def _parseLineStrip(arr):
+  if len(arr) > 2:
+    arrarr = list(map(
+      lambda e: int(e)
+      ,arr[1:]))
+    return arrarr
+  else:
+    print(f"Parsed line with unknown length: {len(arr)}")
     return None
   # Horrible, please rewrite
   # if len(arr) == 4:
