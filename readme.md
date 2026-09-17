@@ -20,7 +20,7 @@ The pipeline rendering needs to be supplied with:
 ## TODO
 ### Modules
 #### Pipeline modules
-- [ ] data provider (vertices, normals, uvs, ...)
+- [] data provider (vertices, normals, uvs, ...)
   - [ ] obj parser
   - [ ] textures input
   - [ ] shaders input    
@@ -35,15 +35,15 @@ The pipeline rendering needs to be supplied with:
 - [ ] fps
 
 ### 2D Shapes
-- [ ] triangle
-- [ ] rectangle
-- [ ] pentagon
-- [ ] regular hexagon
-- [ ] circle
-- [ ] ellipse
-- [ ] trapezoid,
-- [ ] star
-- [ ] arrow
+- [x] triangle
+- [x] rectangle
+- [x] pentagon
+- [x] regular hexagon
+- [x] circle
+- [x] ellipse
+- [x] trapezoid,
+- [x] star
+- [x] arrow
 
 ### 3D Shapes
 - [ ] basic solids
