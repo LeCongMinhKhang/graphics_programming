@@ -10,6 +10,7 @@
   - [ ] textures input
   - [ ] shaders input    
 - [ ] shader pipeline
+- [ ] camera
 #### GUI modules
 - [ ] toolbar
 - [ ] GL display (rendering loop, GL interface)
