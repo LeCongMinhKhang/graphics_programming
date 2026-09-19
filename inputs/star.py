@@ -1,10 +1,10 @@
 from numpy import pi, cos, sin
 
-def generate(n, size, size_inner = 0.0, z = 0.0):
+def generate(n = 5, size = 1.0, size_inner = 0.0, z = 0.0):
   if n < 2:
     n = 2
   if size_inner <= 0:
-    size_inner = 0.5
+    size_inner = 0.5 * size
   if size_inner >= 1:
     size_inner = 0.999
 
