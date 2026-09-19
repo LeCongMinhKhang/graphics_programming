@@ -22,7 +22,7 @@
 - [x] regular hexagon
 - [x] circle
 - [x] ellipse
-- [x] trapezoid,
+- [x] trapezoid
 - [x] star
 - [x] arrow
 

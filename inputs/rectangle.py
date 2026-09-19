@@ -1,4 +1,4 @@
-def generate(width,height, z = 0.0):
+def generate(width = 1.0,height = 2.0, z = 0.0):
   obj = {
     "v"  : [],
     "vt" : [],

@@ -1,6 +1,6 @@
 from numpy import pi, cos, sin
 
-def generate(shape_type = "pentagon"|"hexagon"|"circle"|"ellipse",size = 1.0, size_wide = 1.0, z = 0.0):
+def generate(shape_type,size = 1.0, size_wide = 0.8, z = 0.0):
   n = 3
   w_multiplier = 1
   if size <= 0:
