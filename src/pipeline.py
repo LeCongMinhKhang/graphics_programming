@@ -5,21 +5,20 @@ import sys
 import cv2
 import logging
 
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
+
 
 class Pipeline:
   # buffers
   vaos = []
   programs = []
+  static_uniforms = []
 
   # config
   gl_mode = GL.GL_TRIANGLE_STRIP
   color_mode = True  # True for colors, False for UVs
   indices_indexing = False
   data_type = GL.GL_UNSIGNED_INT
-
-  def __init__(self):
-    return
 
   # todo: support other primitives (mode).
   # @colors: shape (n, 3) = colors, shape (n, 2) = uvs
@@ -31,63 +30,76 @@ class Pipeline:
     vert_shader,
     frag_shader,
     indices=None,
+    static_uniforms=None,
     mode=None,
     vao_id=None,
   ):
-    logging.debug("Loading data")
+    logger.debug("Loading data")
 
     # drawing mode
     if mode is not None:
       self.mode = mode
     else:
       self.mode = GL.GL_TRIANGLES
-    logging.debug("Draw mode set to %s", self.mode)
+    logger.debug("Draw mode set to %s", self.mode)
 
     # ebo presence (TODO: consider using the vao data to discover it, see further in the class)
     if indices is None:
       self.indices_indexing = False
-      logging.debug("No index array (no EBO creation)")
+      logger.debug("No index array (no EBO creation)")
     else:
       self.indices_indexing = True
-      logging.debug("Index array present (EBO creation)")
+      logger.debug("Index array present (EBO creation)")
 
     # checking for data arrays dimensions
     match self.mode:
       case GL.GL_TRIANGLES | GL.GL_TRIANGLE_STRIP:
         if vertices.shape[1] != 3:
-          print("Invalid vertices format")
+          logger.error("Invalid vertices format")
           exit(1)
 
     if normals is not None:
       if vertices.shape[0] != normals.shape[0]:
-        print(
+        logger.error(
           f"vertices and normals vector sizes doesn't match: {vertices.shape[0]} != {normals.shape[0]}"
         )
         exit(1)
-      if normals.ndim != 2  and normals.shape[1] != 3:
-        print("normals vector should be of shape (n, 3)")
+      if normals.ndim != 2 and normals.shape[1] != 3:
+        logger.error("normals vector should be of shape (n, 3)")
         exit(1)
 
     if colors is not None:
       if vertices.shape[0] != colors.shape[0]:
-        print("vertices and color vector sizes doesn't match")
+        logger.error("vertices and color vector sizes doesn't match")
         exit(1)
       if colors.ndim == 2 and colors.shape[1] == 2:
         self.color_mode = False
       elif colors.ndim == 2 and colors.shape[1] == 3:
         self.color_mode = True
       else:
-        print(f"colors vector should be of shape (n, 2) or (n, 3), not {colors.shape}")
+        logger.error(f"colors vector should be of shape (n, 2) or (n, 3), not {colors.shape}")
         exit(1)
 
     if indices is not None:
       if indices.ndim != 1:
-        print("indices vector should be of dimension 1")
+        logger.error("indices vector should be of dimension 1")
         exit(1)
       id_max = np.max(indices)
       if id_max >= vertices.shape[0]:
-        print(f"indices vector contains {id_max} that is out of range")
+        logger.error(f"indices vector contains {id_max} that is out of range")
         exit(1)
+
+    if static_uniforms is not None:
+      for u in static_uniforms:
+        if (
+          type(u) is not type({})
+          or "name" not in u.keys()
+          or "value" not in u.keys()
+          or "type" not in u.keys()
+        ):
+          logger.error('static_uniforms vector should contain dict("name": n, "value": v)')
+        else:
+          logger.debug("Static uniform %s to be added", u["name"])
 
     # loading shaders
     vao = None
@@ -96,7 +108,7 @@ class Pipeline:
       self.programs.append((shader, UManager(shader)))
     else:
       self.programs[vao_id] = (shader, UManager(shader))
-    logging.debug("vertex shader: %s loaded\n\tfragment shader: %s loaded", vert_shader, frag_shader)
+    logger.debug("Vertex shader: %s loaded\n\tFragment shader: %s loaded", vert_shader, frag_shader)
 
     # load data to GPU
     # VBOs
@@ -109,21 +121,32 @@ class Pipeline:
     vao.add_vbo(0, vertices, ncomponents=3, stride=0, offset=None)
     vao.add_vbo(1, colors, ncomponents=(3 if self.color_mode else 2), stride=0, offset=None)
     vao.add_vbo(2, normals, ncomponents=3, stride=0, offset=None)
-    logging.debug("VBOs successfully created")
+    logger.debug("VBOs successfully created")
 
     # EBO
     if self.indices_indexing:
       vao.add_ebo(indices)
-      logging.debug("EBO successfully created")
-    logging.debug("%d", vao.index_count)
+      logger.debug("EBO successfully created, %d indices", vao.index_count)
 
-  def load_shaders():
-    return
+    # Uniforms
+    if vao_id is None:
+      self.static_uniforms.append(static_uniforms)
+    else:
+      self.static_uniforms[vao_id] = static_uniforms
+    logger.debug("Static uniforms saved")
 
-  def draw(self):
-    for vao, program in zip(self.vaos, self.programs):
+  def draw(self, uniforms=np.array([])):
+    for vao, (shader, uma), us in zip(self.vaos, self.programs, self.static_uniforms):
       vao.activate()  # bind VAO
-      GL.glUseProgram(program[0].render_idx)
+      GL.glUseProgram(shader.render_idx)
+      # upload uniforms
+      for uniform in np.concatenate((us, uniforms)):
+        if "transpose" in uniform.keys():
+          uma.upload_uniform(
+            uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]
+          )
+        else:
+          uma.upload_uniform(uniform["value"], uniform["name"], uniform["type"])
       if self.indices_indexing:
         GL.glDrawElements(self.mode, vao.index_count, self.data_type, None)
       else:
@@ -249,6 +272,65 @@ class UManager(object):
     GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
     GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
 
+  def upload_uniform(self, value, name, dtype, transpose=False):
+    GL.glUseProgram(self.shader.render_idx)
+    location = GL.glGetUniformLocation(self.shader.render_idx, name)
+    match dtype:
+      # scalars
+      case "bool":
+        GL.glUniform1b(location, value)
+      case "int":
+        GL.glUniform1i(location, value)
+      case "uint":
+        GL.glUniform1u(location, value)
+      case "float":
+        GL.glUniform1f(location, value)
+      case "double":
+        GL.glUniform1d(location, value)
+
+      # vectors
+      # bool, int, uint
+      case "bvec2" | "ivec2":
+        GL.glUniform2iv(location, 1, value)
+      case "bvec3" | "ivec3":
+        GL.glUniform3iv(location, 1, value)
+      case "bvec4" | "ivec4":
+        GL.glUniform4iv(location, 1, value)
+      # int
+      case "uvec2":
+        GL.glUniform2uv(location, 1, value)
+      case "uvec3":
+        GL.glUniform3uv(location, 1, value)
+      case "uvec4":
+        GL.glUniform4uv(location, 1, value)
+      # float
+      case "vec2" | "fvec2":
+        GL.glUniform2fv(location, 1, value)
+      case "vec3" | "fvec3":
+        GL.glUniform3fv(location, 1, value)
+      case "vec4" | "fvec4":
+        GL.glUniform4fv(location, 1, value)
+      # double
+      case "dvec2":
+        GL.glUniform2fv(location, 2, value)
+      case "dvec3":
+        GL.glUniform3fv(location, 2, value)
+      case "dvec4":
+        GL.glUniform4fv(location, 2, value)
+
+      # matrices
+      case "mat2" | "mat2x2":
+        GL.glUniformMatrix2fv(location, 1, transpose, value)
+      case "mat3" | "mat3x3":
+        GL.glUniformMatrix3fv(location, 1, transpose, value)
+      case "mat4" | "mat4x4":
+        GL.glUniformMatrix4fv(location, 1, transpose, value)
+
+      # invalid type
+      case _:
+        logger.error("No uniform type matching %s", dtype)
+        exit(1)
+
   def upload_uniform_matrix4fv(self, matrix, name, transpose=True):
     GL.glUseProgram(self.shader.render_idx)
     location = GL.glGetUniformLocation(self.shader.render_idx, name)
@@ -279,6 +361,11 @@ class UManager(object):
     location = GL.glGetUniformLocation(self.shader.render_idx, name)
     GL.glUniform1i(location, scalar)
 
+  def upload_uniform_scalar2i(self, scalar, name):
+    GL.glUseProgram(self.shader.render_idx)
+    location = GL.glGetUniformLocation(self.shader.render_idx, name)
+    GL.glUniform1i(location, scalar)
+
 
 class Shader:
   """Helper class to create and automatically destroy shader program"""
@@ -297,7 +384,7 @@ class Shader:
       GL.glDeleteShader(frag)
       status = GL.glGetProgramiv(self.render_idx, GL.GL_LINK_STATUS)
       if not status:
-        print(GL.glGetProgramInfoLog(self.render_idx).decode("ascii"))
+        logger.error(GL.glGetProgramInfoLog(self.render_idx).decode("ascii"))
         sys.exit(1)
 
   def __del__(self):
@@ -318,6 +405,6 @@ class Shader:
       log = GL.glGetShaderInfoLog(shader).decode("ascii")
       GL.glDeleteShader(shader)
       src = "\n".join(src)
-      print("Compile failed for %s\n%s\n%s" % (shader_type, log, src))
+      logger.error("Compile failed for %s\n%s\n%s" % (shader_type, log, src))
       sys.exit(1)
     return shader

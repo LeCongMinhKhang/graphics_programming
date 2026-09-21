@@ -1,63 +1,93 @@
 import glfw
 from OpenGL import GL
+from src.pipeline import Pipeline
+import numpy as np
 
 
-def main():
+def display(data, window_size=(640, 480)):
   # Initialize the library
   if not glfw.init():
     return 1
   # Create a windowed mode window and its OpenGL context
   glfw.window_hint(glfw.RESIZABLE, False)
-  window = glfw.create_window(640, 480, "Hello World", None, None)
+  window = glfw.create_window(
+    window_size[0], window_size[1], "Computer Graphics Viewer", None, None
+  )
   if not window:
     glfw.terminate()
     return 1
 
   # Make the window's context current
   glfw.make_context_current(window)
+
+  # show and resize the window to fix the initial resize of tiling display manager
+  glfw.show_window(window)
+  glfw.set_window_size(window, window_size[0], window_size[1])
+
   glfw.set_key_callback(window, key_callback)
 
-  newhope = {"r": 0.0, "dr": 1, "g": 2.0 / 3, "dg": 1, "b": 2.0 / 3, "db": -1}
-  newage = glfw.get_time()
+  pipeline = Pipeline()
+
+  default_uniforms = np.array(
+    [
+      {
+        "name": "iResolution",
+        "value": np.array([window_size[0], window_size[1]], dtype=np.int32),
+        "type": "ivec2",
+      },
+    ]
+  )
+
+  entries = [
+    "vertices",
+    "normals",
+    "colors",
+    "vert_shader",
+    "frag_shader",
+    "indices",
+    "static_uniforms",
+    "mode",
+    "vao_id",
+  ]
+  for object in data:
+    obj_data = {}
+    for entry in entries:
+      if entry in object.keys():
+        obj_data[entry] = object[entry]
+      else:
+        obj_data[entry] = None
+    pipeline.load_data(
+      obj_data["vertices"],
+      obj_data["normals"],
+      obj_data["colors"],
+      obj_data["vert_shader"],
+      obj_data["frag_shader"],
+      obj_data["indices"],
+      np.concatenate(
+        (
+          default_uniforms,
+          (
+            obj_data["static_uniforms"] if obj_data["static_uniforms"] is not None else np.array([])
+          ),
+        )
+      ),
+      obj_data["mode"],
+      obj_data["vao_id"],
+    )
 
   # Loop until the user closes the window
   while not glfw.window_should_close(window):
+    GL.glClearColor(0, 0, 0, 1.0)
+    GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+
     # Render here, e.g. using pyOpenGL
-    # im guessing doing the draw loop here
+    pipeline.draw()
 
-    # rainbow temp
-    newhope, newage = hopeAndDreams(newhope, newage)
-    # Swap front and back buffers
-    glfw.swap_buffers(window)
-
-    # Poll for and process events
-    glfw.poll_events()
+    glfw.swap_buffers(window)  # Swap front and back buffers
+    glfw.poll_events()  # Poll for and process events
 
   glfw.terminate()
   return 0
-
-
-def hopeAndDreams(old, oldT):
-  # r,g,b,a,dr,dg,db
-  posd = 1
-  negd = -1
-  new = old
-  now = glfw.get_time()
-  GL.glClearColor(old["r"], old["g"], old["b"], 1)
-  GL.glClear(GL.GL_COLOR_BUFFER_BIT)
-
-  for c in ["r", "g", "b"]:
-    tmp = old[c] + old["d" + c] * (now - oldT)
-    if tmp < 0:
-      new[c] = 0
-      new["d" + c] = posd
-    elif tmp > 1:
-      new[c] = 1
-      new["d" + c] = negd
-    else:
-      new[c] = tmp
-
-  return new, now
 
 
 def key_callback(window, key, scancode, action, mods):
@@ -81,4 +111,4 @@ def key_callback(window, key, scancode, action, mods):
 
 
 if __name__ == "__main__":
-  main()
+  display()
