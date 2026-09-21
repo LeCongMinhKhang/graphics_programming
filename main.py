@@ -9,6 +9,7 @@ parser.add_argument("--file", type=str, help="Path to file", default=None)
 parser.add_argument("--scene", type=str, help="Path to scene.py file", default=None)
 parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
+parser.add_argument("--print3d", action='store_true', help="Prints in 3d coords")
 args = parser.parse_args()
 
 logging.basicConfig(
@@ -18,7 +19,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 file_path = args.file
 scene_path = args.scene
-
+print_3d = args.print3d
 logger.info("Starting app")
 
 
@@ -54,8 +55,13 @@ def entry():
 # paste this string to desmos calc
 def pprint(obj):
   res = []
-  for v in obj["v"]:
-    res.append(f"({v[0]:.6f},{v[1]:.6f})")
+  if(print_3d):
+    for v in obj["v"]:
+      res.append(f"({v[0]:.6f},{v[1]:.6f},{v[2]:.6f})")
+  else:
+    for v in obj["v"]:
+      res.append(f"({v[0]:.6f},{v[1]:.6f})")
+
   print(",".join(res))
 
 if __name__ == "__main__":
