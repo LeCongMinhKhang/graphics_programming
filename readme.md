@@ -27,17 +27,17 @@
 - [x] arrow
 
 ### 3D Shapes
-- [ ] basic solids
-  - [ ] cube
-  - [ ] sphere
-  - [ ] cylinder
-  - [ ] cone
-  - [ ] truncated cone
-  - [ ] tetrahedron
-  - [ ] torus
-  - [ ] prism.
-- [ ] Mathematical surface defined by a user-provided function z = f (x, y).
-- [ ] Imported 3D model from .obj or .ply file.
+- [x] basic solids
+  - [x] cube
+  - [x] sphere
+  - [x] cylinder
+  - [x] cone
+  - [x] truncated cone
+  - [x] tetrahedron
+  - [x] torus
+  - [x] prism.
+- [x] Mathematical surface defined by a user-provided function z = f (x, y).
+- [x] Imported 3D model from .obj or .ply file.
 
 ### Basic requirements:
 - The application must include a graphical user interface (GUI) with menus or toolbars
