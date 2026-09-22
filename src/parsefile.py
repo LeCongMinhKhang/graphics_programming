@@ -33,7 +33,7 @@ def parseFile(path):
 def _parseVertex(arr):
   match len(arr):
     case 4:
-      return [ float(arr[1]), float(arr[2]), float(arr[3]), None ]
+      return [ float(arr[1]), float(arr[2]), float(arr[3]) ]
     case 5:
       return [ float(arr[1]), float(arr[2]), float(arr[3]), float(arr[4]) ]
 

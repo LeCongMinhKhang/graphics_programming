@@ -1,4 +1,4 @@
-def generate(length = 2.0,girth = 1.0, z = 0.0):
+def generate(length = 1.0,girth = 1.0, z = 0.0):
   if length <= girth/2:
     length = girth/2
     
