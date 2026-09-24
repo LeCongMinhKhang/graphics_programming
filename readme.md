@@ -2,6 +2,21 @@
 
 ## Part I: Drawing basic shapes
 
+### Default uniforms
+Some uniforms are made available to shaders by default.
+- `float iTime`: the time since the window opening, in seconds.
+- `vec4 iMouse`: mouse info (xy: current if MLB down, zw: click).
+- `vec2 iResolution`: the dimensions of the display window, in pixels.
+
+### Data Structure 
+The pipeline rendering needs to be supplied with:
+- **vertices**: np.array((n, 3))
+- **indices**(optional): np.array((n)) if ommited, will be picking k-tuples from the vertices array where k is the size of primitive (eg 3 for triangles)
+- **colors**: np.array((n, 3)) each component must be in [0, 1]
+- **normals**: np.array((n, 3))
+- **mode**: GL mode, indicating the rendering mode (eg: GL\_TRIANGLES, GL\_TRIANGL_STRIP, ...)
+
+
 ## TODO
 ### Modules
 #### Pipeline modules
@@ -11,10 +26,13 @@
   - [ ] shaders input    
 - [ ] shader pipeline
 - [ ] camera
+- [ ] support flat shading
 #### GUI modules
 - [ ] toolbar
 - [ ] GL display (rendering loop, GL interface)
 - [ ] window 
+- [x] mouse and time support
+- [ ] fps
 
 ### 2D Shapes
 - [ ] triangle
