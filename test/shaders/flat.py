@@ -14,12 +14,12 @@ import src.window
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 
 if __name__ == "__main__":
-  vertices = np.array([[-1, -1, 0], [1, -1, 0], [-1, 1, 0], [1, 1, 0]], dtype=np.float32)
-  colors = np.array([[0, 0, 1], [0, 1, 0], [0, 1, 1], [1, 0, 0]], dtype=np.float32)
+  vertices = np.array([[-1, -1, 0], [1, -1, 0], [0, 1, 0]], dtype=np.float32)
+  colors = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
   normals = np.array([[0, 0, 1]] * vertices.shape[0], dtype=np.float32)
-  vert_shader = "./shaders/identity.vert"
-  frag_shader = "./shaders/interp.frag"
-  indices = np.array([0, 1, 2, 3], dtype=np.int32)
+  vert_shader = "./shaders/flat.vert"
+  frag_shader = "./shaders/flat.frag"
+  indices = np.array([0, 1, 2], dtype=np.int32)
 
   data = [
     {

@@ -19,7 +19,10 @@ if __name__ == "__main__":
     [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]],
     dtype=np.float32,
   )
-  colors = np.array([[1, 0, 0], [0, 1, 0]] * int(vertices.shape[0] / 2), dtype=np.float32)
+  colors = np.array(
+    [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]],
+    dtype=np.float32,
+  )
   normals = np.array(
     [
       [-1, -1, -1],
@@ -33,7 +36,7 @@ if __name__ == "__main__":
     ],
     dtype=np.float32,
   )
-  vert_shader = "./shaders/cube.vert"
+  vert_shader = "./shaders/camera.vert"
   frag_shader = "./shaders/interp.frag"
   indices = np.array(
     [

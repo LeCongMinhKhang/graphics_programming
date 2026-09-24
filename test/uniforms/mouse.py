@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 
 if __name__ == "__main__":
   vertices = np.array([[-1, -1, 0], [1, -1, 0], [-1, 1, 0], [1, 1, 0]], dtype=np.float32)
-  colors = np.array([[1, 0, 0], [0, 1, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
+  colors = np.array([[0, 0, 1], [0, 1, 0], [0, 1, 1], [1, 0, 0]], dtype=np.float32)
   normals = np.array([[0, 0, 1]] * vertices.shape[0], dtype=np.float32)
   vert_shader = "./shaders/interp.vert"
   frag_shader = "./shaders/mouse.frag"
