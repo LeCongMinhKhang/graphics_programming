@@ -22,15 +22,15 @@ def generate(length = 1.0,girth = 1.0, z = 0.0):
   #          |  \|
   #         4'---'5  
   
-  obj["v"].append([         0, - girth/2, z ])
-  obj["v"].append([ - girth/2,         0, z ])
-  obj["v"].append([   girth/2,         0, z ])
+  obj["v"].append([         0, girth/2, z ])
+  obj["v"].append([ - girth/2,       0, z ])
+  obj["v"].append([   girth/2,       0, z ])
 
   if shaft_length > 0:
-    obj["v"].append([ - girth/3,            0, z ])
-    obj["v"].append([ - girth/3, shaft_length, z ])
-    obj["v"].append([   girth/3, shaft_length, z ])
-    obj["v"].append([   girth/3,            0, z ])
+    obj["v"].append([ - girth/3,              0, z ])
+    obj["v"].append([ - girth/3, - shaft_length, z ])
+    obj["v"].append([   girth/3, - shaft_length, z ])
+    obj["v"].append([   girth/3,              0, z ])
 
     obj["f"].append([[0,1,3]])
     obj["f"].append([[0,3,6]])

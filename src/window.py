@@ -70,8 +70,8 @@ def display(data, window_size=(640, 480), camera=Camera):
   GL.glEnable(GL.GL_DEPTH_TEST)  # enable depth test
   GL.glDepthFunc(GL.GL_LESS)  # default; fragment passes if depth < stored depth
 
-  GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
-  GL.glCullFace(GL.GL_BACK)  # cull back faces, render only front faces
+  # GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
+  # GL.glCullFace(GL.GL_BACK)  # cull back faces, render only front faces
   GL.glFrontFace(GL.GL_CCW)  # winding order: counter clockwise indexing
 
   # show and resize the window to fix the initial resize of tiling display manager
