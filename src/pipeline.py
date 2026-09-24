@@ -22,7 +22,7 @@ class Pipeline:
 
   # todo: support other primitives (mode).
   # @colors: shape (n, 3) = colors, shape (n, 2) = uvs
-  def load_data(
+  def add_object(
     self,
     vertices,
     normals,
@@ -30,8 +30,9 @@ class Pipeline:
     vert_shader,
     frag_shader,
     indices=None,
-    static_uniforms=None,
     mode=None,
+    static_uniforms=None,
+    model_matrix=None,
     vao_id=None,
   ):
     logger.debug("Loading data")
@@ -153,6 +154,13 @@ class Pipeline:
         GL.glDrawArrays(self.mode, 0, vao.vertex_count)
       vao.deactivate()
 
+  def destroy(self):  # free allocated resources
+    for vao in self.vaos:
+      vao.__del__()
+    for program in self.programs:
+      program[0].__del__()
+    logger.debug("Allocated buffers freed")
+
 
 class VAO(object):
   # consider dropping this and getting the info from the buffers themselves
@@ -272,21 +280,21 @@ class UManager(object):
     GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
     GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
 
-  def upload_uniform(self, value, name, dtype, transpose=False):
+  def upload_uniform(self, value, name, dtype, transpose=None):
     GL.glUseProgram(self.shader.render_idx)
     location = GL.glGetUniformLocation(self.shader.render_idx, name)
     match dtype:
       # scalars
       case "bool":
-        GL.glUniform1b(location, value)
+        GL.glUniform1b(location, np.bool32(value))
       case "int":
-        GL.glUniform1i(location, value)
+        GL.glUniform1i(location, np.int32(value))
       case "uint":
-        GL.glUniform1u(location, value)
+        GL.glUniform1u(location, np.uint32(value))
       case "float":
-        GL.glUniform1f(location, value)
+        GL.glUniform1f(location, np.float32(value))
       case "double":
-        GL.glUniform1d(location, value)
+        GL.glUniform1d(location, np.float64(value))
 
       # vectors
       # bool, int, uint
@@ -320,51 +328,16 @@ class UManager(object):
 
       # matrices
       case "mat2" | "mat2x2":
-        GL.glUniformMatrix2fv(location, 1, transpose, value)
+        GL.glUniformMatrix2fv(location, 1, True if transpose is None else transpose, value)
       case "mat3" | "mat3x3":
-        GL.glUniformMatrix3fv(location, 1, transpose, value)
+        GL.glUniformMatrix3fv(location, 1, True if transpose is None else transpose, value)
       case "mat4" | "mat4x4":
-        GL.glUniformMatrix4fv(location, 1, transpose, value)
+        GL.glUniformMatrix4fv(location, 1, True if transpose is None else transpose, value)
 
       # invalid type
       case _:
         logger.error("No uniform type matching %s", dtype)
         exit(1)
-
-  def upload_uniform_matrix4fv(self, matrix, name, transpose=True):
-    GL.glUseProgram(self.shader.render_idx)
-    location = GL.glGetUniformLocation(self.shader.render_idx, name)
-    GL.glUniformMatrix4fv(location, 1, transpose, matrix)
-
-  def upload_uniform_matrix3fv(self, matrix, name, transpose=False):
-    GL.glUseProgram(self.shader.render_idx)
-    location = GL.glGetUniformLocation(self.shader.render_idx, name)
-    GL.glUniformMatrix3fv(location, 1, transpose, matrix)
-
-  def upload_uniform_vector4fv(self, vector, name):
-    GL.glUseProgram(self.shader.render_idx)
-    location = GL.glGetUniformLocation(self.shader.render_idx, name)
-    GL.glUniform4fv(location, 1, vector)
-
-  def upload_uniform_vector3fv(self, vector, name):
-    GL.glUseProgram(self.shader.render_idx)
-    location = GL.glGetUniformLocation(self.shader.render_idx, name)
-    GL.glUniform3fv(location, 1, vector)
-
-  def upload_uniform_scalar1f(self, scalar, name):
-    GL.glUseProgram(self.shader.render_idx)
-    location = GL.glGetUniformLocation(self.shader.render_idx, name)
-    GL.glUniform1f(location, scalar)
-
-  def upload_uniform_scalar1i(self, scalar, name):
-    GL.glUseProgram(self.shader.render_idx)
-    location = GL.glGetUniformLocation(self.shader.render_idx, name)
-    GL.glUniform1i(location, scalar)
-
-  def upload_uniform_scalar2i(self, scalar, name):
-    GL.glUseProgram(self.shader.render_idx)
-    location = GL.glGetUniformLocation(self.shader.render_idx, name)
-    GL.glUniform1i(location, scalar)
 
 
 class Shader:

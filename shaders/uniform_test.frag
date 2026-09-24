@@ -3,7 +3,7 @@
 in vec3 fragment_color;
 out vec4 out_color;
 
-uniform ivec2 iResolution;
+uniform vec2 iResolution;
 uniform float testUniform;
 
 void main() {
