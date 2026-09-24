@@ -1,3 +1,5 @@
+from OpenGL import GL
+import numpy as np
 
 def parseFile(path):
   obj = {}
@@ -65,21 +67,20 @@ def _parseLineStrip(arr):
   else:
     print(f"Parsed line with unknown length: {len(arr)}")
     return None
-  # Horrible, please rewrite
-  # if len(arr) == 4:
-  #   arrarr = []
-  #   res = []
-  #   for e in arr[1:4]:
-  #     splitted = e.split("/")
-  #     arrarr.append(list(map(lambda a: None if a == '' else int(a) ,splitted[1:len(splitted)-1])))
-
-  #   for e in range(len(arrarr[0])):
-  #     resres = []
-  #     for f in arrarr:
-  #       resres.append(f[e])
-  #     res.append(resres)
   
-  #   return res 
-  # else:
-  #   print(f"Parsed vertex with unknown length: {len(arr)}")
-  #   return None
+
+def objToPipelineable(obj):
+  res = {
+    # "vertices": [],                # : np.array((n, 3))
+    # "indices": [],                 # (optional): np.array((n)) if ommited, will be picking k-tuples from the vertices array where k is the size of primitive (eg 3 for triangles)
+    # "colors": [],                  # : np.array((n, 3)) each component must be in [0, 1]
+    # "normals": [],                 # : np.array((n, 3))
+    "mode": GL.GL_TRIANGLES        # : GL mode, indicating the rendering mode (eg: GL\_TRIANGLES, GL\_TRIANGL_STRIP, ...)
+  }
+  # List comprehension is my passion
+  res["vertices"] = np.array(obj["v"], dtype=np.float32) if obj["v"] is not None else []
+  res["indices"]  = np.array([f[0][i] for i in range(3) for f in obj["f"]], dtype=np.float32) if obj["f"] is not None else []
+  res["colors"]   = np.array([np.random.default_rng(seed=42).random(size=3) for v in obj["v"]], dtype=np.float32) if obj["v"] is not None else []
+  res["normals"]  = np.array([[0,0,0] for v in obj["v"]], dtype=np.float32) if obj["v"] is not None else []
+
+  return res
