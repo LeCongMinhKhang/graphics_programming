@@ -20,7 +20,7 @@ The pipeline rendering needs to be supplied with:
 ## TODO
 ### Modules
 #### Pipeline modules
-- [ ] data provider (vertices, normals, uvs, ...)
+- [] data provider (vertices, normals, uvs, ...)
   - [ ] obj parser
   - [ ] textures input
   - [ ] shaders input    
@@ -35,28 +35,28 @@ The pipeline rendering needs to be supplied with:
 - [ ] fps
 
 ### 2D Shapes
-- [ ] triangle
-- [ ] rectangle
-- [ ] pentagon
-- [ ] regular hexagon
-- [ ] circle
-- [ ] ellipse
-- [ ] trapezoid,
-- [ ] star
-- [ ] arrow
+- [x] triangle
+- [x] rectangle
+- [x] pentagon
+- [x] regular hexagon
+- [x] circle
+- [x] ellipse
+- [x] trapezoid
+- [x] star
+- [x] arrow
 
 ### 3D Shapes
-- [ ] basic solids
-  - [ ] cube
-  - [ ] sphere
-  - [ ] cylinder
-  - [ ] cone
-  - [ ] truncated cone
-  - [ ] tetrahedron
-  - [ ] torus
-  - [ ] prism.
-- [ ] Mathematical surface defined by a user-provided function z = f (x, y).
-- [ ] Imported 3D model from .obj or .ply file.
+- [x] basic solids
+  - [x] cube
+  - [x] sphere
+  - [x] cylinder
+  - [x] cone
+  - [x] truncated cone
+  - [x] tetrahedron
+  - [x] torus
+  - [x] prism.
+- [x] Mathematical surface defined by a user-provided function z = f (x, y).
+- [x] Imported 3D model from .obj or .ply file.
 
 ### Basic requirements:
 - The application must include a graphical user interface (GUI) with menus or toolbars
