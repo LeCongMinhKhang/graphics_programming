@@ -2,14 +2,13 @@
 #import "@preview/tablex:0.0.9": hlinex, tablex, vlinex // optional, for fancier tables
 #import "@preview/datify:1.0.1": custom-date-format
 
-#let coursename = "Course name h"
-#let reporttype = "Report type h"
-#let report-title = "Report title h"
-#let advisor = "Advisor h"
+#let coursename = "Computer Graphics"
+#let reporttype = "Progress Report"
+#let report-title = "Assignement 1"
+#let advisor = "Trần Thị Ngọc Trâm"
 #let students = (
-  ("Student 1", "ID 1"),
-  ("Student 2", "ID 2"),
-  ("Student 3", "ID 3"),
+  ("Lê Công Minh Khang", "2252295"),
+  ("Philippe Belda", "2660010"),
 )
 
 // Cover page
@@ -47,11 +46,11 @@
       stroke: none,
       column-gutter: 1em,
       align: left,
-      [Advisor:], [#advisor], [],
+      [Advisor(s):], [#advisor], [],
       ..students
         .enumerate()
         .map(((i, s)) => (
-          if i == 0 [Student] else [],
+          if i == 0 [Student(s)] else [],
           s.at(0),
           s.at(1),
         ))
@@ -89,7 +88,7 @@
   set heading(numbering: "I.1.")
   set par(justify: true)
 
-  set figure(numbering: "1.a.")
+  set figure(numbering: "1a")
 
   doc
 }
@@ -104,6 +103,10 @@
 // presentation of the project
 
 = Software structure
+#figure(
+  image("images/software_structure.drawio.png", width: 100%),
+  caption: [Diagram of the software structure],
+)
 
 = Shape Generators
 We choose to have object data to be put into the pipeline as a dictionary with the form:
@@ -122,7 +125,7 @@ Vertex colors are generated as some formula here
 normals are always initialised as [0,0,0]
 
 == Obj files
-From the wiki, we can glance that obj files are formatted as 
+From the wiki, we can glance that obj files are formatted as
 ```
 <fieldtype> <field1> <field2> <etc..>
 # example
@@ -147,11 +150,11 @@ The exact functionality varies depending on use cases (which is why the function
 
 it follows:
 
-given step size 
+given step size
 
-#align(center)[$theta = frac(2 pi,n)$]
+#align(center)[$theta = frac(2 pi, n)$]
 
-for i in range(n) we create a new vertex at coordinate 
+for i in range(n) we create a new vertex at coordinate
 
 #align(center)[$(cos (i theta) times "size",sin (i theta) times "size", z)$]
 
@@ -220,6 +223,8 @@ Finally we make another listOfQuads
 // explain user interface choices and navigation
 
 = Performance
+
+= Challenges encountered
 
 
 #pagebreak()
