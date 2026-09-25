@@ -109,9 +109,10 @@
 )
 
 = Shape Generators
-We choose to have object data to be put into the pipeline as a dictionary with the form:
+== Data format
+We choose to have object data bundled for rendering in the form:
 ```
-{
+data = {
   "vertices": np.array((n, 3))
   "indices"(optional): np.array((n)) if ommited, will be picking k-tuples from the vertices array where k is the size of primitive (eg 3 for triangles)
   "colors": np.array((n, 3)) each component must be in [0, 1]
@@ -119,53 +120,52 @@ We choose to have object data to be put into the pipeline as a dictionary with t
   "mode": GL mode, indicating the rendering mode (eg: GL\_TRIANGLES, GL\_TRIANGL_STRIP, ...)
 }
 ```
-And all the generators and .obj files shall be converted to this format before being rendered.
-For the sake of simplicity, we decided to just assume that the rendering mode will always be GL_TRIANGLES, and for now, have colors and normals be automatically populated
-Vertex colors are generated as some formula here
-normals are always initialised as [0,0,0]
-
+All shape generators and .obj files when read is converted to this format.
+For the sake of simplicity at the moment, the rendering mode is always be GL_TRIANGLES, and colors and normals be automatically populated.
 == Obj files
-From the wiki, we can glance that obj files are formatted as
+From the wiki, we can glance that obj files are text files with the syntax:
 ```
 <fieldtype> <field1> <field2> <etc..>
-# example
-v 1.0 1.0 1.0
-v 1.0 0.0 1.0
-v 1.0 1.0 0.0
+v 0.123 0.234 0.345 1.0
+...
+vt 0.500 1 [0]
+...
+vn 0.707 0.000 0.707
+...
+vp 0.310000 3.210000 2.100000
+...
 f 1 2 3
+f 3/1 4/2 5/3
+f 6/4/1 3/5/3 7/6/5
+f 7//1 8//2 9//3
+f ...
 ```
-At the moment we shall only focus on the 2 fields v (Vertex) and f (Triangle).
+At the moment we shall only focus on the 2 fields v (Vertex) and f (Triangle):
 
-For vertices, we read in the "v" fields as is
-For triangles, .obj files actually has the "f" fields be 1-indexed, as such, converting "f" fields to "indices" will need to decrement all referenced indices by 1
-Moreover, .obj's "f" fields are already set up to be rendered in the mode GL_TRIANGLES as is so we don't need to touch it
+- For `data["vertices"]`, we parse the "v" fields as is
+
+- For `data["indices"]`, .obj files has the "f" fields be 1-indexed when referencing which vertex is part of a triangle, as such, converting "f" fields to "indices" will need to decrement all referenced indices by 1.
 == 2D shapes
 === `__circularish` helper function
-Generating circles comes in quite often in some of the 2D and 3D shapes, thus a helper function like `__circularish` comes in very handy.
+Generating circles comes up a few times in some of the 2D and 3D shapes generation methods, thus a helper function like `__circularish` comes in very handy.
 
-The exact functionality varies depending on use cases (which is why the function is copied accross files instead of declared and imported). But in general, it takes:
+The exact functionality and implementation varies depending on use cases, which is why the function is copied accross files instead of declared and imported. In general, it takes in:
 - n: a number of vertices it will generate
 - size: distance from (0,0,z) it vertices will be
 - z: the z coordinate of vertices
 
-it follows:
+It follows:
 
-given step size
+Given step size in angle:
 
 #align(center)[$theta = frac(2 pi, n)$]
 
-for i in range(n) we create a new vertex at coordinate
+for i in range(n) we create a new vertex at coordinate:
 
 #align(center)[$(cos (i theta) times "size",sin (i theta) times "size", z)$]
 
 === Simple 2D shapes (triangle, rectangle, trapezoid, arrow)
-Most of these simple shapes have vertices and faces predefined, only taking in arguments to scale some attributes as a nicety, otherwise, basically hardcoded
-
-image here
-
-image here
-
-image here
+These shapes are relatively simple, so each generators mostly only takes in a few basic arguments to scale them in different aspects. The vertices then gets their coordinate multiplied accordingly and populating `data["indices"]` is hardcoded
 
 === n-gon shapes (pentagon, hexagon, circle, ellipse)
 All of these shapes can be generated with some variation of the `__circularish` function. Notably:
@@ -174,11 +174,11 @@ All of these shapes can be generated with some variation of the `__circularish` 
 - Circle: n = 60
 - Ellipse: n = 60, with a multiplier to the width of the n-gon in one of the axis
 
-For triangulation, these shapes are triangulated to all have 1 common vertex, and then iterate around the n-gon for the other 2 vertices. This ensures the correct ordering of the indices but leads to rendering artifacts (pinching) around the common vertex. A better way would be to do it in zigzag strips, like a triangle fan. But I'm lazy
+These rings of vertices are triangulated to all have 1 common vertex, and then iterate around the n-gon for the other 2 vertices. This method is simple and ensures the correct ordering of the indices but can leads to rendering artifacts (pinching) around the common vertex. A better way would be to do it in zigzag strips, or manually implementing the GL_TRIANGLE_FAN mode (recall that we assume that all shapes will always render in GL_TRIANGLES mode).
 
 == 3D shapes
 === `triangulationNation` helper function
-A lot of 3d shapes are more conveniently generated as quads (4 sided polygon). However, to keep consistency with the always GL_TRIANGLES thing, we have a helper function to convert a list of quads into the properly ordered list of triangle.
+A lot of 3d shapes are more conveniently generated as quads (4 sided polygon). However, to beable to render in mode GL_TRIANGLES, we need to convert these lists of quads into a list of triangles.
 
 It follows:
 #align(center)[```python
@@ -195,27 +195,65 @@ It follows:
     res.append([[quad[0],quad[2],quad[3]]])
   return res
 ```]
+Note that the method requires that quads part of the input list needs to have vertices indexed in a counter clockwise direction. Usage of this method would need some consideration in how the listOfQuads are generated.
+
 === Cube
-much like the simple 2d shapes, has args for nicety, but mostly hardcoded
+The simplest 3d shape, establises the generation pattern that is used futher down the line.
+#align(center)[```python
+  p = size/2
+  obj["v"].append([ -p ,  p ,  p])
+  obj["v"].append([ -p ,  p , -p])
+  obj["v"].append([ -p , -p ,  p])
+  obj["v"].append([ -p , -p , -p])
+  obj["v"].append([  p , -p ,  p])
+  obj["v"].append([  p , -p , -p])
+  obj["v"].append([  p ,  p ,  p])
+  obj["v"].append([  p ,  p , -p])
+
+  listOfQuads = []
+  # top
+  listOfQuads.append([0,2,4,6])
+  # bottom
+  listOfQuads.append([7,5,3,1])
+
+  for i in range(0,8,2):
+    listOfQuads.append([(i+0)%8,(i+1)%8,(i+3)%8,(i+2)%8])
+```]
+
+We initialize vertices in pairs that makes up 4 parallel edges of the cube going counter clockwise (in the code shown it is parallel to the z axis).
+
+Then quads of the top and bottom faces of the cube is hard coded, putting in care to "reverse" the order for the bottom face to ensure that it faces the correct way.
+
+Finally, thanks to the prepaired order that the vertices are declared, we can use a loop to iterate over the 4 side faces of the cube, with modulo operation `%` to beable to connect the last vertex pair to the first  
 
 === Simple `__circularish` and `triangulationNation` shapes (cylinder, cone, truncated cone, tetrahedron, prism)
-All of these shapes is some combination of `__circularish` and `triangulationNation` applications as a side walls:
-- cylinder: 2 circles with a list of quads connecting the two
-- prism: 2 triangles with a list of quads connecting the two
-- truncated cone: a cylinder with 1 of the circles smaller than the other
-- cone: an n-gon pyramid, with a circle as the base and kind of triangle fan as the side
-- tetrahedron: a cone with a triangle as a base
-=== Sphere and torus
-These shapes utilises similar methodology as the previous shapes with some strong distinctions.
+All of these shapes is generated an a process similarly to the Cube, as some combination of `__circularish` for the top/bottom faces and a loop to generate quads as side walls:
+- Cylinder: 2 n-gon top/bottom faces with a list of quads connecting the two
+- Prism: 2 triangle top/bottom faces with a list of quads connecting the two
+- Truncated cone: a Cylinder with 1 of the circles scaled down
+- Cone: an n-gon pyramid, with an n-gon bottom face and a triangle fan as the side connecting to a vertex at the top
+- tetrahedron: a specifically scaled cone with a triangle as a base
 
-There are multiple ways to create a sphere, but we chose uv sphere to take advantage of tricks we have used before.
-In which, a sphere contains multiple `__circularish` with various sizes and z placements, akin to the latitudes of a globe. These rings are then connected to eachother with a loop of creating a listOfQuads
-At the pole, it is kind of triangle fan.
+=== Sphere
+There are multiple ways to create a sphere, we chose uv sphere due to similarity in construction with the earlier shapes.
 
-For a torus, one could make it by creating a vertical circle, and then apply some matrix transformation to rotate it around the z axis, but we did it by making a circle offsetted off the z axis, referencing the distance from the z axis and the z positioning to create rings along side the doughnut with `__circularish`, and then use a different loop to construct a listOfQuads that connects them
+In which, a sphere contains multiple `__circularish` n-gons of various sizes and z offsets, akin to the latitudes of a globe. These rings are connected to adjacent loops akin to how the sides of a cylinder was generated, only for multiple levels.
+At the pole, the nearest n-gon to the pole vertex is connected similar to how the cone was generated.
+
+=== Torus
+Generating torus could make it by creating an n-gon in the xz plane, offset from the origin, and then apply some matrix transformation to rotate it around the z axis, but we did it by treating it like a cylinder that connects the top and bottom faces.
+
+In particular, we first generate an n-gon using `__circularish`, then use the coordinates of these vertices to inform the offset from the z axis and z placements for generating the "verticle lines" of our "cylinder", which are made using `__circularish` and connected to eachother like the other shapes.
+
 === Surface
-Surface rendering takes in a function z = f(x,y) where f(x,y) is a python lambda x, y. It also has params to control the limits of what to show in the x and y direction (limx and limy). Then we iterate ix, iy over the ranges of [-limx,limx] and [-limy,limy] creating vertices with the coordinates (ix,iy,lambda(x,y)).
-Finally we make another listOfQuads
+Surface rendering takes in a function z = f(x,y) where f(x,y) is a python lambda:
+example: #align(center)[```python 
+func = lambda x, y: numpy.sin(x) + numpy.cos(y)
+```]
+
+It also takes in params to control the limits of the surface to be shown in the x and y direction (+-limx and +-limy).
+
+Then we iterate ix, iy over the ranges of [-limx,limx] and [-limy,limy] creating vertices with the coordinates (ix,iy,lambda(x,y)) and connect them with eachother using `triangulationNation`. Note that this implementation will not handle illegal or limits and can't render (or render accurately) discontinuous functions. 
 
 = Shaders
 
