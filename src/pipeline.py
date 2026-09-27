@@ -12,7 +12,6 @@ class Pipeline:
   # buffers
   vaos = []
   programs = []
-  static_uniforms = []
 
   # config
   gl_mode = GL.GL_TRIANGLE_STRIP
@@ -90,25 +89,14 @@ class Pipeline:
         logger.error(f"indices vector contains {id_max} that is out of range")
         exit(1)
 
-    if static_uniforms is not None:
-      for u in static_uniforms:
-        if (
-          type(u) is not type({})
-          or "name" not in u.keys()
-          or "value" not in u.keys()
-          or "type" not in u.keys()
-        ):
-          logger.error('static_uniforms vector should contain dict("name": n, "value": v)')
-        else:
-          logger.debug("Static uniform %s to be added", u["name"])
-
     # loading shaders
     vao = None
     shader = Shader(vert_shader, frag_shader)
+    uma = UManager(shader)
     if vao_id is None:
-      self.programs.append((shader, UManager(shader)))
+      self.programs.append((shader, uma))
     else:
-      self.programs[vao_id] = (shader, UManager(shader))
+      self.programs[vao_id] = (shader, uma)
     logger.debug("Vertex shader: %s loaded\n\tFragment shader: %s loaded", vert_shader, frag_shader)
 
     # load data to GPU
@@ -130,18 +118,30 @@ class Pipeline:
       logger.debug("EBO successfully created, %d indices", vao.index_count)
 
     # Uniforms
-    if vao_id is None:
-      self.static_uniforms.append(static_uniforms)
-    else:
-      self.static_uniforms[vao_id] = static_uniforms
-    logger.debug("Static uniforms saved")
+    if static_uniforms is not None:
+      for uniform in static_uniforms:
+        if (
+          type(uniform) is not type({})
+          or "name" not in uniform.keys()
+          or "value" not in uniform.keys()
+          or "type" not in uniform.keys()
+        ):
+          logger.error('static_uniforms vector should contain dict("name": n, "value": v)')
+        else:
+          if "transpose" in uniform.keys():
+            uma.upload_uniform(
+              uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]
+            )
+          else:
+            uma.upload_uniform(uniform["value"], uniform["name"], uniform["type"])
+          logger.debug("Static uniform %s added", uniform["name"])
 
   def draw(self, uniforms=np.array([])):
-    for vao, (shader, uma), us in zip(self.vaos, self.programs, self.static_uniforms):
+    for vao, (shader, uma) in zip(self.vaos, self.programs):
       vao.activate()  # bind VAO
       GL.glUseProgram(shader.render_idx)
-      # upload uniforms
-      for uniform in np.concatenate((us, uniforms)):
+      # upload non-static uniforms
+      for uniform in uniforms:
         if "transpose" in uniform.keys():
           uma.upload_uniform(
             uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]
