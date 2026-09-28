@@ -275,6 +275,7 @@ This means, in practice:
 - borrow the measurements of its vertices to generate our `m-gon`s making up the structure of our torus
 - have some clever loops to connect these `m-gon`s' vertices together to form the surface of the torus
 
+
 === Surface
 Surface rendering takes in a function z = f(x,y) where f(x,y) is a python lambda:
 example: #align(center)[```python
