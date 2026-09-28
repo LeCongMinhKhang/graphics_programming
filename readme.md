@@ -32,7 +32,7 @@ The pipeline rendering needs to be supplied with:
 - [ ] GL display (rendering loop, GL interface)
 - [ ] window 
 - [x] mouse and time support
-- [ ] fps
+- [x] fps
 
 ### 2D Shapes
 - [x] triangle
