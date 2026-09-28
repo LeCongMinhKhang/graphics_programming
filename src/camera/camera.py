@@ -35,9 +35,11 @@ class Camera:
       "value": projection_matrix if projection_matrix is not None else self._projection_matrix(),
       "type": "mat4",
     }
+    view_value = view["value"]
     view_pos = {
       "name": "view_pos",
-      "value": np.array([view["value"][0:3, 3]]),
+      "value": (-view_value[:3, :3].T @ view_value[:3, 3]).astype(np.float32),
+      # "value": view["value"][:3, 3],
       "type": "vec3",
     }
 

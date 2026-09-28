@@ -81,5 +81,6 @@ class Trackball(Camera):
     return super().update(
       uniforms,
       mouse,
+      view_matrix=self._view_matrix(),
       projection_matrix=self._projection_matrix(winsize),
     )

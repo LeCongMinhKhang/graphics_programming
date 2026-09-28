@@ -10,8 +10,8 @@ if _ROOT not in sys.path:
 import src.window  # noqa: E402 (disabling ruff warning)
 from src.camera.trackball import Trackball  # noqa: E402
 from src.light import Light  # noqa: E402
-import src.transform  # noqa: E402
 from test.pipeline.sphere import setup  # noqa: E402
+
 
 if __name__ == "__main__":
   data = setup()
@@ -19,7 +19,7 @@ if __name__ == "__main__":
   lights = {
     "name": "lights",
     "type": "lights",
-    "value": np.array([Light(position=(10, 10, 10), color=(1, 0, 0), intensity=1)]),
+    "value": np.array([Light(position=(10, 10, 10), color=(1, 1, 1), intensity=1)]),
   }
   num_lights = {"name": "num_lights", "type": "int", "value": lights["value"].shape[0]}
 

@@ -1,6 +1,5 @@
 import sys
 import os
-import OpenGL.GL as GL
 import numpy as np
 import logging
 
@@ -11,19 +10,19 @@ if _ROOT not in sys.path:
 
 import src.window  # noqa: E402
 from src.camera.trackball import Trackball  # noqa: E402
-from inputs.three_dee import uv_sphere
-from src.parsefile import objToPipelineable
+import src.shape_generators.D3.uv_sphere  # noqa: E402
 
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 
 
 def setup():
-  vert_shader = "./shaders/camera.vert"
-  frag_shader = "./shaders/interp.frag"
-  data = [objToPipelineable(uv_sphere.generate(n=10))]
-  data[0]["vert_shader"] = vert_shader
-  data[0]["frag_shader"] = frag_shader
-  return data
+  sphere = src.shape_generators.D3.uv_sphere.generate(n=10)
+  sphere["vert_shader"] = "./shaders/camera.vert"
+  sphere["frag_shader"] = "./shaders/interp.frag"
+  sphere["colors"] = ((sphere["vertices"] / np.abs(sphere["vertices"]).max()) * 0.5 + 0.5).astype(
+    np.float32
+  )
+  return [sphere]
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ if __name__ == "__main__":
   lights = {
     "name": "lights",
     "type": "lights",
-    "value": np.array([Light(position=(10, 10, 10), color=(1, 0, 0), intensity=1)]),
+    "value": np.array([Light(position=(10, 10, 10), color=(1, 1, 1), intensity=1)]),
   }
   num_lights = {"name": "num_lights", "type": "int", "value": lights["value"].shape[0]}
 
