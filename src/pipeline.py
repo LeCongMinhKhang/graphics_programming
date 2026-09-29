@@ -6,13 +6,13 @@ import cv2
 import logging
 
 logger = logging.getLogger(__name__)
+MAX_LIGHTS = 16
 
 
 class Pipeline:
   # buffers
   vaos = []
   programs = []
-  static_uniforms = []
 
   # config
   gl_mode = GL.GL_TRIANGLE_STRIP
@@ -35,7 +35,7 @@ class Pipeline:
     model_matrix=None,
     vao_id=None,
   ):
-    logger.debug("Loading data")
+    logger.debug("---------- Adding new object ----------")
 
     # drawing mode
     if mode is not None:
@@ -90,25 +90,20 @@ class Pipeline:
         logger.error(f"indices vector contains {id_max} that is out of range")
         exit(1)
 
-    if static_uniforms is not None:
-      for u in static_uniforms:
-        if (
-          type(u) is not type({})
-          or "name" not in u.keys()
-          or "value" not in u.keys()
-          or "type" not in u.keys()
-        ):
-          logger.error('static_uniforms vector should contain dict("name": n, "value": v)')
-        else:
-          logger.debug("Static uniform %s to be added", u["name"])
+    if model_matrix is None:
+      model_matrix = np.identity(4)
+    else:
+      if model_matrix.shape != (4, 4):
+        logger.error(f"model matrix should be of shape (4, 4), not {model_matrix.shape}")
 
     # loading shaders
     vao = None
     shader = Shader(vert_shader, frag_shader)
+    uma = UManager(shader)
     if vao_id is None:
-      self.programs.append((shader, UManager(shader)))
+      self.programs.append((shader, uma))
     else:
-      self.programs[vao_id] = (shader, UManager(shader))
+      self.programs[vao_id] = (shader, uma)
     logger.debug("Vertex shader: %s loaded\n\tFragment shader: %s loaded", vert_shader, frag_shader)
 
     # load data to GPU
@@ -130,18 +125,33 @@ class Pipeline:
       logger.debug("EBO successfully created, %d indices", vao.index_count)
 
     # Uniforms
-    if vao_id is None:
-      self.static_uniforms.append(static_uniforms)
-    else:
-      self.static_uniforms[vao_id] = static_uniforms
-    logger.debug("Static uniforms saved")
+    if static_uniforms is not None:
+      static_uniforms = np.concatenate(
+        (static_uniforms, np.array([{"name": "model", "value": model_matrix, "type": "mat4"}]))
+      )
+      for uniform in static_uniforms:
+        if (
+          type(uniform) is not type({})
+          or "name" not in uniform.keys()
+          or "value" not in uniform.keys()
+          or "type" not in uniform.keys()
+        ):
+          logger.error('static_uniforms vector should contain dict("name": n, "value": v)')
+        else:
+          if "transpose" in uniform.keys():
+            uma.upload_uniform(
+              uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]
+            )
+          else:
+            uma.upload_uniform(uniform["value"], uniform["name"], uniform["type"])
+          logger.debug("Static uniform %s added", uniform["name"])
 
   def draw(self, uniforms=np.array([])):
-    for vao, (shader, uma), us in zip(self.vaos, self.programs, self.static_uniforms):
+    for vao, (shader, uma) in zip(self.vaos, self.programs):
       vao.activate()  # bind VAO
       GL.glUseProgram(shader.render_idx)
-      # upload uniforms
-      for uniform in np.concatenate((us, uniforms)):
+      # upload non-static uniforms
+      for uniform in uniforms:
         if "transpose" in uniform.keys():
           uma.upload_uniform(
             uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]
@@ -281,8 +291,9 @@ class UManager(object):
     GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
 
   def upload_uniform(self, value, name, dtype, transpose=None):
-    GL.glUseProgram(self.shader.render_idx)
-    location = GL.glGetUniformLocation(self.shader.render_idx, name)
+    program = self.shader.render_idx
+    GL.glUseProgram(program)
+    location = GL.glGetUniformLocation(program, name)
     match dtype:
       # scalars
       case "bool":
@@ -290,7 +301,7 @@ class UManager(object):
       case "int":
         GL.glUniform1i(location, np.int32(value))
       case "uint":
-        GL.glUniform1u(location, np.uint32(value))
+        GL.glUniform1ui(location, np.uint32(value))
       case "float":
         GL.glUniform1f(location, np.float32(value))
       case "double":
@@ -333,6 +344,18 @@ class UManager(object):
         GL.glUniformMatrix3fv(location, 1, True if transpose is None else transpose, value)
       case "mat4" | "mat4x4":
         GL.glUniformMatrix4fv(location, 1, True if transpose is None else transpose, value)
+
+      # lights
+      case "lights":
+        n = min(len(value), MAX_LIGHTS)
+        for i, light in enumerate(value[:n]):
+
+          def loc(name):
+            return GL.glGetUniformLocation(program, f"lights[{i}].{name}")
+
+          GL.glUniform3f(loc("position"), *light.position)
+          GL.glUniform3f(loc("color"), *light.color)
+          GL.glUniform1f(loc("intensity"), light.intensity)
 
       # invalid type
       case _:

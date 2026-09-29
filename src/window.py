@@ -11,7 +11,7 @@ from src.camera.camera import Camera
 logger = logging.getLogger(__name__)
 
 
-def display(data, window_size=(640, 480), camera=Camera):
+def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
 
   # Mouse state, keyed simply
   mouse = {
@@ -71,9 +71,19 @@ def display(data, window_size=(640, 480), camera=Camera):
   GL.glEnable(GL.GL_DEPTH_TEST)  # enable depth test
   GL.glDepthFunc(GL.GL_LESS)  # default; fragment passes if depth < stored depth
 
-  # GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
-  # GL.glCullFace(GL.GL_BACK)  # cull back faces, render only front faces
   GL.glFrontFace(GL.GL_CCW)  # winding order: counter clockwise indexing
+  GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
+
+  # wireframe mode toggle (affects backface culling)
+  if wireframe:
+    GL.glDisable(GL.GL_CULL_FACE)  # face culling disabled
+    GL.glPolygonMode(GL.GL_FRONT, GL.GL_LINE)
+    GL.glPolygonMode(GL.GL_BACK, GL.GL_LINE)
+    logger.debug("Wireframe mode enabled.")
+  else:
+    GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
+    GL.glPolygonMode(GL.GL_FRONT, GL.GL_FILL)
+    GL.glPolygonMode(GL.GL_BACK, GL.GL_FILL)
 
   # show and resize the window to fix the initial resize of tiling display manager
   glfw.show_window(window)
@@ -135,7 +145,7 @@ def display(data, window_size=(640, 480), camera=Camera):
       model_matrix=obj_data["model_matrix"],
       vao_id=obj_data["vao_id"],
     )
-  logger.debug("All objects added")
+  logger.debug("---------- All objects added (%d) ----------", len(data))
 
   cam = camera()
   logger.debug("Camera initialized")
@@ -174,6 +184,11 @@ def display(data, window_size=(640, 480), camera=Camera):
           "type": "vec4",
         },
       ]
+      + [
+        lights
+      ]  # warning: passed as dynamic uniforms but still static (TODO: support light moves, cf readme.questions)
+      if lights is not None
+      else []
     )
     uniforms = cam.update(uniforms=np.concatenate((default_static_uniforms, uniforms)), mouse=mouse)
 

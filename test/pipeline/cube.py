@@ -9,17 +9,21 @@ _ROOT = os.path.dirname(os.path.dirname(_SAMPLE_DIR))
 if _ROOT not in sys.path:
   sys.path.insert(0, _ROOT)
 
-import src.window
-from src.camera.trackball import Trackball
+import src.window  # noqa: E402
+from src.camera.trackball import Trackball  # noqa: E402
 
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 
-if __name__ == "__main__":
+
+def setup():
   vertices = np.array(
     [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]],
     dtype=np.float32,
   )
-  colors = np.array([[1, 0, 0], [0, 1, 0]] * int(vertices.shape[0] / 2), dtype=np.float32)
+  colors = np.array(
+    [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]],
+    dtype=np.float32,
+  )
   normals = np.array(
     [
       [-1, -1, -1],
@@ -33,7 +37,7 @@ if __name__ == "__main__":
     ],
     dtype=np.float32,
   )
-  vert_shader = "./shaders/cube.vert"
+  vert_shader = "./shaders/camera.vert"
   frag_shader = "./shaders/interp.frag"
   indices = np.array(
     [
@@ -78,7 +82,7 @@ if __name__ == "__main__":
   )
 
   # define scene data, one list entry per object (a dictionary)
-  data = [
+  return [
     {
       "vertices": vertices,
       "normals": normals,
@@ -90,4 +94,7 @@ if __name__ == "__main__":
     }
   ]
 
+
+if __name__ == "__main__":
+  data = setup()
   src.window.display(data, camera=Trackball)

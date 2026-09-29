@@ -9,7 +9,7 @@ _ROOT = os.path.dirname(os.path.dirname(_SAMPLE_DIR))
 if _ROOT not in sys.path:
   sys.path.insert(0, _ROOT)
 
-import src.window  # noqa: E402
+import src.window
 
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 

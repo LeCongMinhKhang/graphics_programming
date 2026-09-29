@@ -8,6 +8,11 @@ Some uniforms are made available to shaders by default.
 - `vec4 iMouse`: mouse info (xy: current if MLB down, zw: click).
 - `vec2 iResolution`: the dimensions of the display window, in pixels.
 
+- `mat4 model`: the model matrix to place an object in the world
+- `mat4 view`: the tranform matrix from world to camera view
+- `mat4 projection`: the transform matrix from camera view to screen
+- `vec3 view_pos`: the world position of the camera
+
 ### Data Structure 
 The pipeline rendering needs to be supplied with:
 - **vertices**: np.array((n, 3))
@@ -16,23 +21,41 @@ The pipeline rendering needs to be supplied with:
 - **normals**: np.array((n, 3))
 - **mode**: GL mode, indicating the rendering mode (eg: GL\_TRIANGLES, GL\_TRIANGL_STRIP, ...)
 
+### Usage
+```sh
+python test/generators/generator.py --scene triangle 
+python test/generators/generator.py --scene torus
+python test/generators/generator.py --scene surface
+python test/pipeline/lighting/sphere.py  # phong lighting
+```
 
-## TODO
 ### Modules
 #### Pipeline modules
-- [] data provider (vertices, normals, uvs, ...)
-  - [ ] obj parser
-  - [ ] textures input
-  - [ ] shaders input    
-- [ ] shader pipeline
-- [ ] camera
-- [ ] support flat shading
+- [x] different GL modes
+- [ ] different GL primitives
+  - [x] triangles
+  - [ ] segments
+  - [ ] points
+- [ ] textures input
+- [x] shaders files support
+  - [x] uniforms
+- [x] camera
+- [x] Wireframe mode for visualizing only the edges of the shape.
+- [ ] lighting 
+  - [x] Flat color (single uniform color for the entire object).
+  - [ ] Vertex color interpolation using Gouraud shading.
+  - [x] Phong shading (with per-fragment lighting).
+  - [ ] Texture mapping using external image files provided by the user.
+  - [x] multiple lights
+  - [ ] directional light
+  - [x] puncual light
 #### GUI modules
-- [ ] toolbar
-- [ ] GL display (rendering loop, GL interface)
-- [ ] window 
+- [ ] toolbar/menus
+- [x] GL display (rendering loop, GL interface)
+- [x] window 
 - [x] mouse and time support
-- [x] fps
+- [ ] keyboard interaction
+- [ ] fps
 
 ### 2D Shapes
 - [x] triangle
@@ -58,14 +81,15 @@ The pipeline rendering needs to be supplied with:
 - [x] Mathematical surface defined by a user-provided function z = f (x, y).
 - [x] Imported 3D model from .obj or .ply file.
 
-### Basic requirements:
-- The application must include a graphical user interface (GUI) with menus or toolbars
-that allow users to select which shape to draw or add.
-- The application must support mouse and/or keyboard interaction to zoom, pan, and
-rotate the objects in the scene.
-- The application must provide multiple rendering modes for each object:
-  - [ ] Flat color (single uniform color for the entire object).
-  - [ ] Vertex color interpolation using Gouraud shading.
-  - [ ] Phong shading (with per-fragment lighting).
-  - [ ] Texture mapping using external image files provided by the user.
-  - [ ] Wireframe mode for visualizing only the edges of the shape.
+
+## Questions:
+should the wireframe be able to be activated for each separately?
+-> ie one parameter to toggle it globally (default behaviour) and one parameter for each object specifically
+
+Currently: model matrix is static.
+Consider making a class allowing the objects to move within the scene by modifying the model matrix (then the `model` uniform should become dynamic, maybe handled by a class similarly to the camera).
+
+Same discussion with lights
+
+## TODO: 
+Cache uniform locations. glGetUniformLocation with string formatting every frame is slow in Python. Build a dict of locations once after linking the program
