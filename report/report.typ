@@ -255,20 +255,20 @@ At the pole, the nearest n-gon to the pole vertex is connected similar to how th
 
 // // REDO (clarify)
 // In particular, we first generate an n-gon using `__circularish`, then use the coordinates of these vertices to inform the offset from the z axis and z placements for generating the "verticle lines" of our "cylinder", which are made using `__circularish` and connected to eachother like the other shapes.
-// 
-// 
-// Call back to the Cube generator where we prioritized generating vertices in pairs to make 4 parallel lines for the sides of the cube to make triangulating the side faces of the cube simpler. For a torus, we shall do the same but the parallel side edges are instead edges that follow around the ring that is the torus, prioritzing generating the 
+//
+//
+// Call back to the Cube generator where we prioritized generating vertices in pairs to make 4 parallel lines for the sides of the cube to make triangulating the side faces of the cube simpler. For a torus, we shall do the same but the parallel side edges are instead edges that follow around the ring that is the torus, prioritzing generating the
 
-// Here, imagine cutting the torus like a bagel sandwich way, you will see 
+// Here, imagine cutting the torus like a bagel sandwich way, you will see
 // A Torus is a shape much like a doughnut, or a ring you wear on your hand, or a disc with a hole in it, or a chain link. But for rendering, most people would have this ring be rounded, not a flat shape like a disc, or a flat shape (in a another orthogonal direction). You would also want this shape to be evenly thick and smooth not like a slightly bumpy bread surface of a doughnut.
 
-// With this requirement of what a torus should look like in the end, one must imagine how to create such a shape. 
+// With this requirement of what a torus should look like in the end, one must imagine how to create such a shape.
 To generate a Torus, we need to take into consideration its properties.
 For it roundedness, we can define it as cutting the torus in half (bisecting) through the plane containing the z axis (the center of the torus's hole) and have its cross section be a circle. The cross section of the torus should be a circle regardless of where you break it in half. In essence we are revolving a circle around some center axis (eg. the z axis in a 3d x y z coordinate system).
 
 Because we are working with computers, it makes more sense to only generate a few slices, a few angles of the torus bisection to create a circular cross section, to avoid having to generate and render an infinite amount of vertices. So each "circular cross section" would be an `n-gon` shape and around the torus, there should only be `m` cross sections where `m` is a positive integer.
 
-It is difficult to generate an `n-gon` cross-sections at different angles of bisection. So, instead of generating `m` `n-gon` cross sections, we can generate 1 piece of each `m` cross sections `n` times. To motivate this approach, imagine cutting the doughnut along the xy plane. You will see that the cross section now will be composed of 2 circles centered on the center of the torus' hole, one for the outside edge of the doughnut, one for the inner edge. We can think of making `m` pieces with an ` __circularish` generator producing `m-gon`s that are centered on the axis of revolution (the z axis). These `m-gon`s would have its radius and z offset borrowed from a point along the surface of the torus. 
+It is difficult to generate an `n-gon` cross-sections at different angles of bisection. So, instead of generating `m` `n-gon` cross sections, we can generate 1 piece of each `m` cross sections `n` times. To motivate this approach, imagine cutting the doughnut along the xy plane. You will see that the cross section now will be composed of 2 circles centered on the center of the torus' hole, one for the outside edge of the doughnut, one for the inner edge. We can think of making `m` pieces with an ` __circularish` generator producing `m-gon`s that are centered on the axis of revolution (the z axis). These `m-gon`s would have its radius and z offset borrowed from a point along the surface of the torus.
 
 This means, in practice:
 - we first generate a temporary `n-gon` offset from the z axis
@@ -306,6 +306,15 @@ However, the shaders might need some associated data: uniforms and textures. The
 - #underline[textures]: \ #text[
     Currently textures are not supported.
   ]
+
+= Lighting
+
+The lighting of a scene can completely change its final rendering, hence it plays a major role in computer graphics. In this program, we chose to handle scene lights thanks to a data structure that is passed to the fragment shader as a uniform. This uniform is in fact an array of lights, to enable the definition of several of them.
+A light is declared in python as an instance of the class `Light`, that is simply a container to hold the attributes defining the light. \
+Currently, the class is as follow:
+#align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
+
+With the light passed down to the fragment shader, we simply have to apply a formula (Goureaud, Phong, ...) to obtain the fragment color.
 
 = GUI
 // explain user interface choices and navigation
