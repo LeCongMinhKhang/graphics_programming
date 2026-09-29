@@ -71,7 +71,7 @@ def getInput():
       case "tetrahedron":
         return n_gon_piramid.generate("tetrahedron")
       case "surface":
-        return surface.generate(lambda x, y: np.sin(x) + np.sin(y), 5, 5, 3)
+        return surface.generate(lambda x,y: np.sin(x)+np.sin(y),25,25,5)
       case "sphere":
         return uv_sphere.generate()
       case "torus":

@@ -85,3 +85,13 @@ def objToPipelineable(obj):
   )
 
   return res
+
+
+def objToFile(obj,filename = "object.obj"):
+  with open(filename, "w", encoding="utf-8") as file :
+    file.writelines(
+      [f"v {v[0]} {v[1]} {v[2]}\n" for v in obj["v"]]
+    )
+    file.writelines(
+      [f"f {f[0][0]+1} {f[0][1]+1} {f[0][2]+1}\n" for f in obj["f"]]
+    )

@@ -4,6 +4,7 @@ import glfw
 import time
 import logging
 
+from .tinkertonk import Tonkapi
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
 
@@ -149,9 +150,21 @@ def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=
   cam = camera()
   logger.debug("Camera initialized")
 
+  tinker = Tonkapi()
   start_time = time.time()
+  old_time = start_time
+  new_time = start_time
+  n = 0
   # Loop until the user closes the window
   while not glfw.window_should_close(window):
+    n = (n+1) % 1_000_000
+    old_time = new_time
+    new_time = time.time()
+    if (new_time == old_time):
+      tinker.fps(999999)
+    else:
+      tinker.fps(1/(new_time-old_time))
+      # tinker.fps(n)
     GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
     # Render here, e.g. using pyOpenGL
@@ -183,7 +196,7 @@ def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=
 
     glfw.swap_buffers(window)  # Swap front and back buffers
     glfw.poll_events()  # Poll for and process events
-
+  tinker.kill()
   pipeline.destroy()
   glfw.terminate()
   return 0

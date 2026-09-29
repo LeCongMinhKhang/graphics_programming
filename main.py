@@ -13,6 +13,7 @@ parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
 parser.add_argument("--print3d", action='store_true', help="Prints in 3d coords")
 parser.add_argument("--outputfile", action='store_true', help="Output to file")
+parser.add_argument("--tofile", type=str, help="Output to file", default=None)
 args = parser.parse_args()
 
 logging.basicConfig(
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 file_path = args.file
 scene_path = args.scene
 print_3d = args.print3d
+to_file = args.tofile
 logger.info("Starting app")
 
 outputfile = args.outputfile
@@ -68,7 +70,7 @@ def entry():
       case "tetrahedron":
         pprint(n_gon_piramid.generate("tetrahedron"))
       case "surface":
-        pprint(surface.generate(lambda x,y: x**2 + y**2,5,5,1))
+        pprint(surface.generate(lambda x,y: np.sin(x) + np.sin(y) ,25,25,5))
       case "sphere":
         pprint(uv_sphere.generate())
       case "torus":
@@ -79,21 +81,24 @@ def entry():
 def pprint(obj):
   index = 0
   res = []
-  if(print_3d):
-    for v in obj["v"]:
-      res.append(f"P_{"{"+str(index)+"}"} = ({v[0]:.6f},{v[1]:.6f},{v[2]:.6f})")
-      index += 1
+  if to_file is not None:
+    parsefile.objToFile(obj,to_file)
   else:
-    for v in obj["v"]:
-      res.append(f"P_{"{"+str(index)+"}"} = ({v[0]:.6f},{v[1]:.6f})")
-      index += 1
-  for f in obj["f"]:
-    res.append(f"\\operatorname{{triangle}}\\left(P_{{{f[0][0]}}},P_{{{f[0][1]}}},P_{{{f[0][2]}}}\\right)")
-  if outputfile:
-    with open("output.txt", "w", encoding="utf-8") as file:
-      file.write("\n".join(res))
-  else:
-    print("\n".join(res))
+    if(print_3d):
+      for v in obj["v"]:
+        res.append(f"P_{"{"+str(index)+"}"} = ({v[0]:.6f},{v[1]:.6f},{v[2]:.6f})")
+        index += 1
+    else:
+      for v in obj["v"]:
+        res.append(f"P_{"{"+str(index)+"}"} = ({v[0]:.6f},{v[1]:.6f})")
+        index += 1
+    for f in obj["f"]:
+      res.append(f"\\operatorname{{triangle}}\\left(P_{{{f[0][0]}}},P_{{{f[0][1]}}},P_{{{f[0][2]}}}\\right)")
+    if outputfile:
+      with open("output.txt", "w", encoding="utf-8") as file:
+        file.write("\n".join(res))
+    else:
+      print("\n".join(res))
 
 if __name__ == "__main__":
   entry()
