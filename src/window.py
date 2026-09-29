@@ -150,14 +150,17 @@ def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=
   cam = camera()
   logger.debug("Camera initialized")
 
-  tinker = Tonkapi()
   start_time = time.time()
+  
+  tinker = Tonkapi()
   old_time = start_time
   new_time = start_time
-  n = 0
+  # n = 0
   # Loop until the user closes the window
   while not glfw.window_should_close(window):
-    n = (n+1) % 1_000_000
+    # n = (n+1) % 1_000_000
+
+    # FPS calculation
     old_time = new_time
     new_time = time.time()
     if (new_time == old_time):
@@ -165,8 +168,8 @@ def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=
     else:
       tinker.fps(1/(new_time-old_time))
       # tinker.fps(n)
-    GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
+    GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
     # Render here, e.g. using pyOpenGL
     uniforms = np.array(
       [

@@ -22,6 +22,7 @@ from inputs.three_dee import cube, cylinder, n_gon_piramid, surface, uv_sphere, 
 parser = argparse.ArgumentParser(description="3D viewer")
 parser.add_argument("--file", type=str, help="Path to file", default=None)
 parser.add_argument("--scene", type=str, help="Path to scene.py file", default=None)
+parser.add_argument("--wireframe", action="store_true", help="View in wireframe", default=None)
 args = parser.parse_args()
 
 file_path = args.file
@@ -73,13 +74,13 @@ def getInput():
       case "surface":
         return surface.generate(lambda x,y: np.sin(x)+np.sin(y),25,25,5)
       case "sphere":
-        return uv_sphere.generate()
+        return uv_sphere.generate(n = 16)
       case "torus":
         return torus.generate(n=8)
 
 
 if __name__ == "__main__":
-  vert_shader = "./shaders/camera.vert"
+  vert_shader = "./shaders/turn.vert"
   frag_shader = "./shaders/interp.frag"
   obj = getInput()
   if obj is not None:
@@ -87,4 +88,4 @@ if __name__ == "__main__":
     data[0]["vert_shader"] = vert_shader
     data[0]["frag_shader"] = frag_shader
 
-    src.window.display(data, camera=Trackball)
+    src.window.display(data, camera=Trackball,wireframe=args.wireframe)
