@@ -255,9 +255,9 @@ At the pole, the nearest n-gon to the pole vertex is connected similar to how th
 
 // // REDO (clarify)
 // In particular, we first generate an n-gon using `__circularish`, then use the coordinates of these vertices to inform the offset from the z axis and z placements for generating the "verticle lines" of our "cylinder", which are made using `__circularish` and connected to eachother like the other shapes.
-// 
-// 
-// Call back to the Cube generator where we prioritized generating vertices in pairs to make 4 parallel lines for the sides of the cube to make triangulating the side faces of the cube simpler. For a torus, we shall do the same but the parallel side edges are instead edges that follow around the ring that is the torus, prioritzing generating the 
+//
+//
+// Call back to the Cube generator where we prioritized generating vertices in pairs to make 4 parallel lines for the sides of the cube to make triangulating the side faces of the cube simpler. For a torus, we shall do the same but the parallel side edges are instead edges that follow around the ring that is the torus, prioritzing generating the
 
 // Here, imagine cutting the torus like a bagel sandwich way, you will see 
 // A Torus is a shape much like a doughnut, or a ring you wear on your hand, or a disc with a hole in it, or a chain link. But for rendering, most people would have this ring be rounded, not a flat shape like a disc, or a flat shape (in a another orthogonal direction). You would also want this shape to be evenly thick and smooth not like a slightly bumpy bread surface of a doughnut.
@@ -306,6 +306,15 @@ However, the shaders might need some associated data: uniforms and textures. The
 - #underline[textures]: \ #text[
     Currently textures are not supported.
   ]
+
+= Lighting
+
+The lighting of a scene can completely change its final rendering, hence it plays a major role in computer graphics. In this program, we chose to handle scene lights thanks to a data structure that is passed to the fragment shader as a uniform. This uniform is in fact an array of lights, to enable the definition of several of them.
+A light is declared in python as an instance of the class `Light`, that is simply a container to hold the attributes defining the light. \
+Currently, the class is as follow:
+#align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
+
+With the light passed down to the fragment shader, we simply have to apply a formula (Goureaud, Phong, ...) to obtain the fragment color.
 
 = GUI
 // explain user interface choices and navigation
