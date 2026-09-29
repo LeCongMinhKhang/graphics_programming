@@ -16,7 +16,7 @@ from src.camera.trackball import Trackball
 from src import parsefile
 import argparse
 
-from inputs.two_dee import triangle,trapezoid,rectangle,star,n_gon,arrow
+from inputs.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow
 from inputs.three_dee import cube, cylinder, n_gon_piramid, surface, uv_sphere, torus
 
 parser = argparse.ArgumentParser(description="3D viewer")
@@ -28,6 +28,8 @@ file_path = args.file
 scene_path = args.scene
 
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+
+
 def getInput():
   if file_path is None and scene_path is None:
     parser.print_help()
@@ -61,7 +63,7 @@ def getInput():
       case "cylinder":
         return cylinder.generate()
       case "prism":
-        return cylinder.generate(1.0,3)
+        return cylinder.generate(1.0, 3)
       case "truncated_cone":
         return cylinder.generate(0.5)
       case "cone":
@@ -69,14 +71,15 @@ def getInput():
       case "tetrahedron":
         return n_gon_piramid.generate("tetrahedron")
       case "surface":
-        return surface.generate(lambda x,y: np.sin(x)+np.sin(y),5,5,3)
+        return surface.generate(lambda x, y: np.sin(x) + np.sin(y), 5, 5, 3)
       case "sphere":
         return uv_sphere.generate()
       case "torus":
         return torus.generate(n=8)
 
+
 if __name__ == "__main__":
-  vert_shader = "./shaders/cube.vert"
+  vert_shader = "./shaders/camera.vert"
   frag_shader = "./shaders/interp.frag"
   obj = getInput()
   if obj is not None:

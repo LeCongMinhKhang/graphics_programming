@@ -25,8 +25,6 @@ class Camera:
     return None
 
   def update(self, uniforms, mouse, view_matrix=None, projection_matrix=None):
-    add_view = True
-    add_projection = True
     view = {
       "name": "view",
       "value": view_matrix if view_matrix is not None else self._view_matrix(),
@@ -37,26 +35,19 @@ class Camera:
       "value": projection_matrix if projection_matrix is not None else self._projection_matrix(),
       "type": "mat4",
     }
+    view_value = view["value"]
+    view_pos = {
+      "name": "view_pos",
+      "value": (-view_value[:3, :3].T @ view_value[:3, 3]).astype(np.float32),
+      # "value": view["value"][:3, 3],
+      "type": "vec3",
+    }
 
-    # update view and projection entries if they already exist in uniforms array
-    for i, uniform in enumerate(uniforms):
-      if uniform["name"] == "view":
-        if not add_view:
-          self.logger.error('At least 2 entries for "view" uniform')
-          exit(1)
-        uniform[i] = view
-        add_view = False
-      if uniform["name"] == "projection":
-        if not add_projection:
-          self.logger.error('At least 2 entries for "projection" uniform')
-          exit(1)
-        uniform[i] = projection
-        add_projection = False
+    # check for no uniform redefinition
+    for uniform in uniforms:
+      if uniform["name"] in ("view", "projection", "view_pos"):
+        self.logger.error('"%s" is a reserved uniform symbol', uniform["name"])
+        exit(1)
 
-    # add view and projection uniforms if they are not already in uniforms array
-    uniforms_to_add = []
-    if add_view:
-      uniforms_to_add.append(view)
-    if add_projection:
-      uniforms_to_add.append(projection)
-    return np.concatenate((uniforms, np.array(uniforms_to_add)))
+    # add view, projection, view_pos uniforms
+    return np.concatenate((uniforms, np.array([view, projection, view_pos])))

@@ -24,13 +24,13 @@ The pipeline rendering needs to be supplied with:
   - [ ] obj parser
   - [ ] textures input
   - [ ] shaders input    
-- [ ] shader pipeline
-- [ ] camera
-- [ ] support flat shading
+- [x] shader pipeline
+- [x] camera
+- [x] support flat shading
 #### GUI modules
 - [ ] toolbar
-- [ ] GL display (rendering loop, GL interface)
-- [ ] window 
+- [x] GL display (rendering loop, GL interface)
+- [x] window 
 - [x] mouse and time support
 - [ ] fps
 
@@ -64,8 +64,24 @@ that allow users to select which shape to draw or add.
 - The application must support mouse and/or keyboard interaction to zoom, pan, and
 rotate the objects in the scene.
 - The application must provide multiple rendering modes for each object:
-  - [ ] Flat color (single uniform color for the entire object).
+  - [x] Flat color (single uniform color for the entire object).
   - [ ] Vertex color interpolation using Gouraud shading.
   - [ ] Phong shading (with per-fragment lighting).
   - [ ] Texture mapping using external image files provided by the user.
-  - [ ] Wireframe mode for visualizing only the edges of the shape.
+  - [x] Wireframe mode for visualizing only the edges of the shape.
+
+### Lighting
+multiple lights supported
+lights passed as uniforms, can be passed as static uniforms (via object declaration) 
+
+## Questions:
+should the wireframe be able to be activated for each separately?
+-> ie one parameter to toggle it globally (default behaviour) and one parameter for each object specifically
+
+Currently: model matrix is static.
+Consider making a class allowing the objects to move within the scene by modifying the model matrix (then the `model` uniform should become dynamic, maybe handled by a class similarly to the camera).
+
+Same discussion with lights
+
+## TODO: 
+Cache uniform locations. glGetUniformLocation with string formatting every frame is slow in Python. Build a dict of locations once after linking the program
