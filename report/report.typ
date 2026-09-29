@@ -264,7 +264,7 @@ At the pole, the nearest n-gon to the pole vertex is connected similar to how th
 
 // With this requirement of what a torus should look like in the end, one must imagine how to create such a shape. 
 To generate a Torus, we need to take into consideration its properties.
-For it roundedness, more precisely by saying, cutting the torus in half (bisecting) through the center of the holed disc (like breaking a doughnut in half to share with a friend) and have its cross section be a circle. The cross section of the torus should be a circle regardless of where you break it in half. In essence we are revolving a circle around some center axis, lets say the z axis in a 3d x y z coordinate system.
+For it roundedness, we can define it as cutting the torus in half (bisecting) through the plane containing the z axis (the center of the torus's hole) and have its cross section be a circle. The cross section of the torus should be a circle regardless of where you break it in half. In essence we are revolving a circle around some center axis (eg. the z axis in a 3d x y z coordinate system).
 
 Because we are working with computers, it makes more sense to only generate a few slices, a few angles of the torus bisection to create a circular cross section, to avoid having to generate and render an infinite amount of vertices. So each "circular cross section" would be an `n-gon` shape and around the torus, there should only be `m` cross sections where `m` is a positive integer.
 
@@ -273,7 +273,7 @@ It is difficult to generate an `n-gon` cross-sections at different angles of bis
 This means, in practice:
 - we first generate a temporary `n-gon` offset from the z axis
 - borrow the measurements of its vertices to generate our `m-gon`s making up the structure of our torus
-- have some clever loops to connect these `m-gon`s' vertices to triangulate the surface of the torus
+- have some clever loops to connect these `m-gon`s' vertices together to form the surface of the torus
 
 === Surface
 Surface rendering takes in a function z = f(x,y) where f(x,y) is a python lambda:
@@ -284,12 +284,12 @@ func = lambda x, y: numpy.sin(x) + numpy.cos(y)
 It also takes in parameters to control the limits of the surface to be shown in the x and y direction (`+-limx` and `+-limy`).
 
 // REDO (proper pseudo code or simpler language)
+// Then we iterate ix, iy over the ranges of [-limx,limx] and [-limy,limy] creating vertices with the coordinates (ix,iy,lambda(x,y)) and connect them with eachother using `triangulationNation`. Note that this implementation will not handle illegal or limits and can't render (or render accurately) discontinuous functions.
 We consider a small slice of the xyz coordinate space where we want to render the surface of our function.
 It spans `+-limx` in the x direction, `+-limy` in the y direction and infinitely in the z direction.
 We populate it evenly with a vertex every dx and dy, and have that vertex's z offset be determined by the lambda function provided.
 Lastly, we can connect these vertices with their neighbors to create the surface of our function.
 Note that this implementation can not handle illegal (eg. divide by 0) or limits and can't render (or render accurately) discontinuous functions.
-// Then we iterate ix, iy over the ranges of [-limx,limx] and [-limy,limy] creating vertices with the coordinates (ix,iy,lambda(x,y)) and connect them with eachother using `triangulationNation`. Note that this implementation will not handle illegal or limits and can't render (or render accurately) discontinuous functions.
 
 = Shaders
 
