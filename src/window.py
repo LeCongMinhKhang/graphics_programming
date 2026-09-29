@@ -184,11 +184,13 @@ def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=
           "type": "vec4",
         },
       ]
-      + [
-        lights
-      ]  # warning: passed as dynamic uniforms but still static (TODO: support light moves, cf readme.questions)
-      if lights is not None
-      else []
+      + (
+        [
+          lights
+        ]  # warning: passed as dynamic uniforms but still static (TODO: support light moves, cf readme.questions)
+        if lights is not None
+        else []
+      )
     )
     uniforms = cam.update(uniforms=np.concatenate((default_static_uniforms, uniforms)), mouse=mouse)
 
