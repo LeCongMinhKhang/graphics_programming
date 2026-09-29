@@ -260,15 +260,20 @@ At the pole, the nearest n-gon to the pole vertex is connected similar to how th
 // Call back to the Cube generator where we prioritized generating vertices in pairs to make 4 parallel lines for the sides of the cube to make triangulating the side faces of the cube simpler. For a torus, we shall do the same but the parallel side edges are instead edges that follow around the ring that is the torus, prioritzing generating the 
 
 // Here, imagine cutting the torus like a bagel sandwich way, you will see 
-A Torus is a shape much like a doughnut, or a ring you wear on your hand, or a disc with a hole in it, or a chain link. But for rendering, most people would have this ring be rounded, not a flat shape like a disc, or a flat shape (in a another orthogonal direction). You would also want this shape to be evenly thick and smooth not like a slightly bumpy bread surface of a doughnut.
+// A Torus is a shape much like a doughnut, or a ring you wear on your hand, or a disc with a hole in it, or a chain link. But for rendering, most people would have this ring be rounded, not a flat shape like a disc, or a flat shape (in a another orthogonal direction). You would also want this shape to be evenly thick and smooth not like a slightly bumpy bread surface of a doughnut.
 
-With this requirement of what a torus should look like in the end, one must imagine how to create such a shape. For the roundedness, we can state this more precisely by saying, cutting the torus in half (bisecting) through the center of the holed disc (like breaking a doughnut in half to share with a friend) and have its cross section be the roundest shape: a circle. In fact, you'd want the cross section of the torus be a circle regardless of where you break it in half. In conclusion you must think of revolving a circle around some center axis, lets say the z axis in a 3d x y z coordinate system.
+// With this requirement of what a torus should look like in the end, one must imagine how to create such a shape. 
+To generate a Torus, we need to take into consideration its properties.
+For it roundedness, more precisely by saying, cutting the torus in half (bisecting) through the center of the holed disc (like breaking a doughnut in half to share with a friend) and have its cross section be a circle. The cross section of the torus should be a circle regardless of where you break it in half. In essence we are revolving a circle around some center axis, lets say the z axis in a 3d x y z coordinate system.
 
-Because we are working with computer graphics, it makes more sense to only generate a few slices, a few angles of the torus bisection to create a circular cross section, to avoid having to poplulate and render an infinite amount of vertices. So each "circular cross section" would be an `n-gon` shape and around the torus, there should only be `m` cross sections.
+Because we are working with computers, it makes more sense to only generate a few slices, a few angles of the torus bisection to create a circular cross section, to avoid having to generate and render an infinite amount of vertices. So each "circular cross section" would be an `n-gon` shape and around the torus, there should only be `m` cross sections where `m` is a positive integer.
 
-Because the programmer is bad at trigonometry and is bad at other college level math classes, it is difficult to generate an `n-gon` cross-sections at different angles of bisection, we do it another way. Instead of generating `m` `n-gon` cross sections, we can generate 1 piece of each `m` cross sections `n` times. To motivate this approach, I want you to imagine cutting the doughnut along its planer plane (for making a sandwich). You will see that the cross section now will be composed of 2 circles centered on the center of the doughnut's hole (one for the outside edge of the doughnut, one for the inner edge). So you could imagine generating these `m` pieces with an ```python __circularish``` generator producing `m-gon` that is centered on the axis of revolution (the z axis). These `m-gon`s would have its radius and z offset defined by picking a point along the surface of the doughnut and applying its distance from the z axis and its z offset from the xy plane to the entire `m-gon`. 
+It is difficult to generate an `n-gon` cross-sections at different angles of bisection. So, instead of generating `m` `n-gon` cross sections, we can generate 1 piece of each `m` cross sections `n` times. To motivate this approach, imagine cutting the doughnut along the xy plane. You will see that the cross section now will be composed of 2 circles centered on the center of the torus' hole, one for the outside edge of the doughnut, one for the inner edge. We can think of making `m` pieces with an ` __circularish` generator producing `m-gon`s that are centered on the axis of revolution (the z axis). These `m-gon`s would have its radius and z offset borrowed from a point along the surface of the torus. 
 
-This means, what we do, is first generate a temporary `n-gon` offset from the z axis to borrow the measurements of its vertices to generate our `m-gon`s making up the structure of our torus. The only thing left is some clever loops to connect these `m-gon`s' vertices to triangulate the surface of the torus.
+This means, in practice:
+- we first generate a temporary `n-gon` offset from the z axis
+- borrow the measurements of its vertices to generate our `m-gon`s making up the structure of our torus
+- have some clever loops to connect these `m-gon`s' vertices to triangulate the surface of the torus
 
 === Surface
 Surface rendering takes in a function z = f(x,y) where f(x,y) is a python lambda:
@@ -279,7 +284,12 @@ func = lambda x, y: numpy.sin(x) + numpy.cos(y)
 It also takes in parameters to control the limits of the surface to be shown in the x and y direction (`+-limx` and `+-limy`).
 
 // REDO (proper pseudo code or simpler language)
-Then we iterate ix, iy over the ranges of [-limx,limx] and [-limy,limy] creating vertices with the coordinates (ix,iy,lambda(x,y)) and connect them with eachother using `triangulationNation`. Note that this implementation will not handle illegal or limits and can't render (or render accurately) discontinuous functions.
+We consider a small slice of the xyz coordinate space where we want to render the surface of our function.
+It spans `+-limx` in the x direction, `+-limy` in the y direction and infinitely in the z direction.
+We populate it evenly with a vertex every dx and dy, and have that vertex's z offset be determined by the lambda function provided.
+Lastly, we can connect these vertices with their neighbors to create the surface of our function.
+Note that this implementation can not handle illegal (eg. divide by 0) or limits and can't render (or render accurately) discontinuous functions.
+// Then we iterate ix, iy over the ranges of [-limx,limx] and [-limy,limy] creating vertices with the coordinates (ix,iy,lambda(x,y)) and connect them with eachother using `triangulationNation`. Note that this implementation will not handle illegal or limits and can't render (or render accurately) discontinuous functions.
 
 = Shaders
 
