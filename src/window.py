@@ -7,12 +7,15 @@ import logging
 from .tinkertonk import Tonkapi
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
+from . import tkwindow
+
 
 logger = logging.getLogger(__name__)
 
 
 def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
-
+  tkwindow.display(data = data, window_size=window_size, camera=camera, lights=lights, wireframe=wireframe)
+  return
   # Mouse state, keyed simply
   mouse = {
     "x": 0.0,
