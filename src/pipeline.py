@@ -97,6 +97,7 @@ class Pipeline:
         logger.error(f"model matrix should be of shape (4, 4), not {model_matrix.shape}")
 
     # loading shaders
+    logger.debug("Loading shaders")
     vao = None
     shader = Shader(vert_shader, frag_shader)
     uma = UManager(shader)
