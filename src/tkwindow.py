@@ -1,19 +1,19 @@
-import time
 import tkinter as tk
 from tkinter import ttk
 from OpenGL import GL
 from pyopengltk import OpenGLFrame
-
-
+import time
+import datetime
 import numpy as np
+
 import logging
 
-import queue
-import datetime
-
-from .tinkertonk import Tonkapi
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
+
+from .tkwindowComponents.table import Tablerone
+from .tkwindowComponents.stylingHelper import RowTracker as Row, StyleEnum as Ste
+from .tkwindowComponents.scrollable import ScrollableList 
 
 logger = logging.getLogger(__name__)
 
@@ -21,18 +21,39 @@ class App(tk.Tk):
   def __init__(self, data = [], window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
     super().__init__()
     self.title("Graphics")
-    self.geometry(f"{window_size[0]}x{window_size[1]}") 
-    self.minsize(window_size[0],window_size[1]) 
-    # self.columnconfigure(index=(0),weight=1)
-    # self.rowconfigure(index=(1),weight=1)
-    # self.backgroundColor = ttk.Label(self,background= "#ffffff").grid(row=0, column=0, rowspan=2, sticky="nsew")
+    self.resizable(True,False)
+    self.geometry(f"{window_size[0]}x{window_size[1]}")
+    self.minsize(window_size[0],window_size[1])
+    self.grid_columnconfigure(index=(0),minsize = window_size[1])
+    self.grid_columnconfigure(index=(1),weight=1)
     self.diagnostics = Diagnostics(self)    
     self.diagnostics.grid(row=0 , column=0,sticky="nw")
-    self.viewport = AppOgl(parent=self, data = data, window_size=window_size, camera=camera, lights=lights, wireframe=wireframe, func= self.diagnostics.fps) 
-    self.viewport.animate = 1
+    self.viewport = AppOgl(parent=self, data = data, window_size=window_size, camera=camera, lights=lights, wireframe=wireframe, 
+                           func= self.diagnostics.fps
+                          ) 
     self.viewport.grid(row = 0,column=0,sticky="nw")
-    self.diagnostics.lift()
+    self.diagnostics.lift(self.viewport)
     
+    self.sidebar = ScrollableList(self)
+    self.sidebar.grid(row=0,column=1,sticky="nsew")
+    self.sidebar.frameframe.grid_columnconfigure(index=0,weight=1)
+
+    self.table = Tablerone(self.sidebar.frameframe,col=3)
+    self.table.grid(row=0,column=0,sticky="nsew")
+    self.table.grid_columnconfigure(index=(0,1,2),weight=1)
+    self.table.newRow(
+      self.table.label(text="Control Panel"),
+      self.table.none(),
+      self.table.button(text="Apply")
+    )
+    self.table.newRow(
+      self.table.label(text="Displaying:"),
+      self.table.comboBox(id = "scenetype",values=[
+        "file","triangle","rectangle","pentagon","hexagon","circle","ellipse","trapezoid","star","arrow","cube","cylinder","prism","truncated_cone","cone","tetrahedron","surface","sphere","torus",], 
+        state="readonly"),
+      self.table.entry()
+    )
+
     self.after(100, self.viewport.printContext) 
     self.viewport.mainloop()
 
@@ -41,72 +62,41 @@ class Diagnostics(ttk.Frame):
   def __init__(self,parent):
     super().__init__(parent)
 
-    # 2. Configure a custom style name mapping to TFrame
-
     self.live = True
     self.records = []
     self.low = 999999
     self.lowRecords = []
     self.lowCount = 0
-    # self.exportButton = ttk.Button(self,text="Export to csv",command=lambda: self.export(self.table))
+    
     self.table = Tablerone(self,col = 2)
     self.table.grid(row=0,column=0,sticky="nsew")
     self.table.newRow(
       self.table.label(text="FPS:"),
       self.table.label(text="n/a", id="fps")
     )
-    row = self.table.newRow(
+    self.table.newRow(
       self.table.label(text="1%:"),
       self.table.label(text="n/a", id="low")
     )
-    # self.exportButton.grid(row=row+1,column=0)
 
   def fps(self,val):
-    self.lowCount = (self.lowCount+1)%100
     self.low = min(self.low,val)
-    if self.lowCount == 0:
-      self.table.getById("low").config(text=str(int(self.low)))
-      # self.lowRecords.append(self.low)
-      self.low = val
     self.records.append(val)
     if len(self.records) >= 100:
+      self.table.get("low").config(text=str(int(self.low)))
+      self.low = val
       avg = self.records[0]
       for data in self.records[1:]:
         avg += data
       avg /= len(self.records)
-      self.table.getById("fps").config(text=str(int(avg)))
+      self.table.get("fps").config(text=str(int(avg)))
       self.records = []
-    # self.table.getById("fps").config(text = val)
 
   def export(self,table):
     with open(f"./{datetime.datetime.now(datetime.UTC).strftime("%d-%m-%y_%H-%M-%S")}.csv","w",encoding="utf8") as file:
       file.writelines("\n".join([",".join([table.get(r,c)["text"] for c in range(len(table.table))]) for r in range(len(table.table[0]))]))
 
-class Tablerone(ttk.Frame):
-  def __init__(self,parent,col = 1):
-    super().__init__(parent)
-    # column major
-    self.dict = {}
-    self.table = [[] for i in range(col)]
 
-  def newRow(self,*args):
-    nextRow = len(self.table[0])
-    for i in range(len(args)):
-      self.table[i].append(args[i])
-      args[i].grid(row = nextRow,column = i, sticky = "se",padx=2,pady=2)
-    return nextRow
-
-  def label(self,/,id=None,**kwargs):
-    lab = ttk.Label(self,**kwargs)
-    if id is not None: 
-      self.dict[id] = lab
-    return lab
-  
-  def getById(self,id):
-    return self.dict[id]
-  
-  def get(self,row,col):
-    return self.table[col][row]
 
 class AppOgl(OpenGLFrame):
   def __init__(self,/,*args,parent = None, data = [], window_size=(640, 480), camera=Camera, lights=None, wireframe=False, func = lambda a : None, **kw):
@@ -152,6 +142,7 @@ class AppOgl(OpenGLFrame):
     self.bind("<Button-1>", self.on_mouse)
     self.bind("<MouseWheel>", self.on_mouse)
     self.bind("<ButtonRelease-1>", self.on_mouse)
+    self.animate = 1
   # glfw.set_cursor_pos_callback(window, cursor_pos_callback)
   # glfw.set_mouse_button_callback(window, mouse_button_callback)
   # glfw.set_scroll_callback(window, scroll_callback)
@@ -196,10 +187,6 @@ class AppOgl(OpenGLFrame):
 
   def initgl(self):
     """Initalize gl states when the frame is created"""
-    # GL.glViewport(0, 0, self.width, self.height)
-    # GL.glClearColor(0.0, 1.0, 0.0, 0.0)
-    # self.start = time.time()
-    # self.nframes = 0
     GL.glEnable(GL.GL_DEPTH_TEST)  # enable depth test
     GL.glDepthFunc(GL.GL_LESS)  # default; fragment passes if depth < stored depth
 
@@ -248,10 +235,6 @@ class AppOgl(OpenGLFrame):
 
   def redraw(self):
     """Render a single frame"""
-    # GL.glClear(GL.GL_COLOR_BUFFER_BIT)
-    # tm = time.time() - self.start
-    # self.nframes += 1
-    # print("", self.nframes / tm, end="\r")
     self.old_time = self.new_time
     self.new_time = time.time()
     self.func(int(1/(self.new_time - self.old_time)) if self.new_time != self.old_time else 999999)
