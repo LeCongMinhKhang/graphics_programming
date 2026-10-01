@@ -13,9 +13,10 @@ class Pipeline:
   # buffers
   vaos = []
   programs = []
+  gl_modes = []
 
   # config
-  gl_mode = GL.GL_TRIANGLE_STRIP
+  # gl_mode = GL.GL_TRIANGLE_STRIP
   color_mode = True  # True for colors, False for UVs
   indices_indexing = False
   data_type = GL.GL_UNSIGNED_INT
@@ -38,11 +39,12 @@ class Pipeline:
     logger.debug("---------- Adding new object ----------")
 
     # drawing mode
-    if mode is not None:
-      self.mode = mode
+    mode = mode if mode is not None else GL.GL_TRIANGLES
+    if vao_id is None:
+      self.gl_modes.append(mode)
     else:
-      self.mode = GL.GL_TRIANGLES
-    logger.debug("Draw mode set to %s", self.mode)
+      self.gl_modes[vao_id] = mode
+    logger.debug("Draw mode set to %s", mode)
 
     # ebo presence (TODO: consider using the vao data to discover it, see further in the class)
     if indices is None:
@@ -53,11 +55,9 @@ class Pipeline:
       logger.debug("Index array present (EBO creation)")
 
     # checking for data arrays dimensions
-    match self.mode:
-      case GL.GL_TRIANGLES | GL.GL_TRIANGLE_STRIP:
-        if vertices.shape[1] != 3:
-          logger.error("Invalid vertices format")
-          exit(1)
+    if vertices.shape[1] != 3:
+      logger.error("Invalid vertices format")
+      exit(1)
 
     if normals is not None:
       if vertices.shape[0] != normals.shape[0]:
@@ -147,7 +147,7 @@ class Pipeline:
           logger.debug("Static uniform %s added", uniform["name"])
 
   def draw(self, uniforms=np.array([])):
-    for vao, (shader, uma) in zip(self.vaos, self.programs):
+    for vao, (shader, uma), gl_mode in zip(self.vaos, self.programs, self.gl_modes):
       vao.activate()  # bind VAO
       GL.glUseProgram(shader.render_idx)
       # upload non-static uniforms
@@ -159,7 +159,7 @@ class Pipeline:
         else:
           uma.upload_uniform(uniform["value"], uniform["name"], uniform["type"])
       if self.indices_indexing:
-        GL.glDrawElements(self.mode, vao.index_count, self.data_type, None)
+        GL.glDrawElements(gl_mode, vao.index_count, self.data_type, None)
       else:
         GL.glDrawArrays(self.mode, 0, vao.vertex_count)
       vao.deactivate()

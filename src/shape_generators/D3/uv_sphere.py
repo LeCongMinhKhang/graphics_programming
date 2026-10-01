@@ -42,9 +42,15 @@ def generate(radius=1.0, n=3):
         i4 = i3 + 1
         indices += [i1, i2, i3, i3, i2, i4]
 
+  vertices = np.array(vertices, dtype=np.float32)
+  indices = np.array(indices, dtype=np.uint32)
+  normals = np.array(normals, dtype=np.float32)
+  colors = ((vertices / np.abs(vertices).max()) * 0.5 + 0.5).astype(np.float32)
+
   return {
-    "vertices": np.array(vertices, dtype=np.float32),
-    "indices": np.array(indices, dtype=np.uint32),
-    "normals": np.array(normals, dtype=np.float32),
+    "vertices": vertices,
+    "indices": indices,
+    "normals": normals,
+    "colors": colors,
     "mode": GL.GL_TRIANGLES,
   }
