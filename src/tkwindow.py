@@ -3,63 +3,182 @@ from tkinter import ttk
 from OpenGL import GL
 from pyopengltk import OpenGLFrame
 import time
+import sys
 import datetime
 import numpy as np
+
 
 import logging
 
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
+import src.shape_generators.D3.uv_sphere as uv_sphere
+from src.light import Light
+import src.transform as transform
 
 from .tkwindowComponents.table import Tablerone
 from .tkwindowComponents.stylingHelper import RowTracker as Row, StyleEnum as Ste
-from .tkwindowComponents.scrollable import ScrollableList 
+from .tkwindowComponents.scrollable import ScrollableList
 
 logger = logging.getLogger(__name__)
 
+
 class App(tk.Tk):
-  def __init__(self, data = [], window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
+  def __init__(self, data=[], window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
     super().__init__()
     self.title("Graphics")
-    self.resizable(True,False)
-    self.geometry(f"{window_size[0]}x{window_size[1]}")
-    self.minsize(window_size[0],window_size[1])
-    self.grid_columnconfigure(index=(0),minsize = window_size[1])
-    self.grid_columnconfigure(index=(1),weight=1)
-    self.diagnostics = Diagnostics(self)    
-    self.diagnostics.grid(row=0 , column=0,sticky="nw")
-    self.viewport = AppOgl(parent=self, data = data, window_size=window_size, camera=camera, lights=lights, wireframe=wireframe, 
-                           func= self.diagnostics.fps
-                          ) 
-    self.viewport.grid(row = 0,column=0,sticky="nw")
-    self.diagnostics.lift(self.viewport)
-    
-    self.sidebar = ScrollableList(self)
-    self.sidebar.grid(row=0,column=1,sticky="nsew")
-    self.sidebar.frameframe.grid_columnconfigure(index=0,weight=1)
-
-    self.table = Tablerone(self.sidebar.frameframe,col=3)
-    self.table.grid(row=0,column=0,sticky="nsew")
-    self.table.grid_columnconfigure(index=(0,1,2),weight=1)
-    self.table.newRow(
-      self.table.label(text="Control Panel"),
-      self.table.none(),
-      self.table.button(text="Apply")
+    self.resizable(True, False)
+    w, h = window_size[0] + 500, window_size[1]
+    x = (self.winfo_screenwidth() - w) // 2
+    y = (self.winfo_screenheight() - h) // 2
+    self.geometry(f"{w}x{h}+{x}+{y}")  # centers the window
+    self.minsize(window_size[0], window_size[1])
+    self.grid_columnconfigure(index=(0), minsize=window_size[1])
+    self.grid_columnconfigure(index=(1), weight=1)
+    self.diagnostics = Diagnostics(self)
+    self.diagnostics.grid(row=0, column=0, sticky="nw")
+    self.viewport = AppOgl(
+      parent=self,
+      # data=data,
+      window_size=window_size,
+      camera=camera,
+      # lights=lights,
+      func=self.diagnostics.fps,
     )
+    self.viewport.grid(row=0, column=0, sticky="nw")
+    self.diagnostics.lift(self.viewport)
+
+    # options
+    self.wireframe_var = tk.BooleanVar()
+    self.rotation_var = tk.BooleanVar()
+    self.nb_lights_var = tk.IntVar()
+
+    # UI definition
+    self.sidebar = ScrollableList(self)
+    self.sidebar.grid(row=0, column=1, sticky="nsew")
+    self.sidebar.frameframe.grid_columnconfigure(index=0, weight=1)
+
+    self.table = Tablerone(self.sidebar.frameframe, col=3)
+    self.table.grid(row=0, column=0, sticky="nsew")
+    self.table.grid_columnconfigure(index=(0, 1, 2), weight=1)
+    self.table.newRow(
+      self.table.label(text="Control Panel"), self.table.none(), self.table.button(text="Apply")
+    )
+    # scene type
     self.table.newRow(
       self.table.label(text="Displaying:"),
-      self.table.comboBox(id = "scenetype",values=[
-        "file","triangle","rectangle","pentagon","hexagon","circle","ellipse","trapezoid","star","arrow","cube","cylinder","prism","truncated_cone","cone","tetrahedron","surface","sphere","torus",], 
-        state="readonly"),
-      self.table.entry()
+      self.table.comboBox(
+        id="scenetype",
+        values=[
+          "file",
+          "triangle",
+          "rectangle",
+          "pentagon",
+          "hexagon",
+          "circle",
+          "ellipse",
+          "trapezoid",
+          "star",
+          "arrow",
+          "cube",
+          "cylinder",
+          "prism",
+          "truncated_cone",
+          "cone",
+          "tetrahedron",
+          "surface",
+          "sphere",
+          "sphere x2",
+          "sphere lighting",
+          "torus",
+        ],
+        default=17,
+        state="readonly",
+        command=self.change_scene,
+      ),
     )
 
-    self.after(100, self.viewport.printContext) 
+    # lighting
+    self.table.newRow(
+      self.table.label(text="Lighting:"),
+      self.table.comboBox(
+        id="lighting",
+        values=list(self.viewport.programs.keys()),
+        default=0,
+        state="readonly",
+        command=self.change_lighting,
+      ),
+    )
+    self.table.newRow(
+      self.table.label(text="Number of lights (0-16)"),
+      self.table.spinBox(
+        id="nb_lights",
+        from_=0,
+        to=16,
+        textvariable=self.nb_lights_var,
+        default=1,
+        command=self.change_nb_lights,
+      ),
+    )
+
+    # options
+    self.table.newRow(
+      self.table.label(text="Wireframe"),
+      self.table.checkButton(
+        id="wireframe", command=self.change_wireframe, variable=self.wireframe_var
+      ),
+    )
+    self.table.newRow(
+      self.table.label(text="Rotation"),
+      self.table.checkButton(
+        id="rotation", command=self.change_rotation, variable=self.rotation_var
+      ),
+    )
+    self.after(100, self.viewport.printContext)
+    self.protocol("WM_DELETE_WINDOW", self.on_close)
     self.viewport.mainloop()
+
+  def on_close(self):
+    self.viewport.animate = 0  # stop the redraw loop
+    try:
+      self.viewport.tkMakeCurrent()  # GL calls need the context
+      self.viewport.pipeline.destroy()
+    except Exception:
+      logger.exception("error while freeing GL resources")
+    self.destroy()
+
+  def change_wireframe(self):
+    if self.wireframe_var.get():
+      GL.glDisable(GL.GL_CULL_FACE)  # face culling disabled
+      GL.glPolygonMode(GL.GL_FRONT, GL.GL_LINE)
+      GL.glPolygonMode(GL.GL_BACK, GL.GL_LINE)
+      logger.debug("Wireframe mode enabled.")
+    else:
+      GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
+      GL.glPolygonMode(GL.GL_FRONT, GL.GL_FILL)
+      GL.glPolygonMode(GL.GL_BACK, GL.GL_FILL)
+      logger.debug("Wireframe mode disabled.")
+
+  def change_nb_lights(self):
+    self.viewport.nb_lights = self.nb_lights_var.get()
+
+  def change_scene(self, event):
+    value = event.widget.get()
+    logger.debug("%s scene selected.", value)
+    self.viewport.set_scene(value)
+
+  def change_lighting(self, event):
+    value = event.widget.get()
+    logger.debug("%s lighting selected.", value)
+    self.viewport.select_program(value)
+
+  def change_rotation(self):
+    logger.debug("rotation %s", "enabled" if self.rotation_var.get() else "disabled")
+    self.viewport.toggle_rotation(self.rotation_var.get())
 
 
 class Diagnostics(ttk.Frame):
-  def __init__(self,parent):
+  def __init__(self, parent):
     super().__init__(parent)
 
     self.live = True
@@ -67,20 +186,14 @@ class Diagnostics(ttk.Frame):
     self.low = 999999
     self.lowRecords = []
     self.lowCount = 0
-    
-    self.table = Tablerone(self,col = 2)
-    self.table.grid(row=0,column=0,sticky="nsew")
-    self.table.newRow(
-      self.table.label(text="FPS:"),
-      self.table.label(text="n/a", id="fps")
-    )
-    self.table.newRow(
-      self.table.label(text="1%:"),
-      self.table.label(text="n/a", id="low")
-    )
 
-  def fps(self,val):
-    self.low = min(self.low,val)
+    self.table = Tablerone(self, col=2)
+    self.table.grid(row=0, column=0, sticky="nsew")
+    self.table.newRow(self.table.label(text="FPS:"), self.table.label(text="n/a", id="fps"))
+    self.table.newRow(self.table.label(text="1%:"), self.table.label(text="n/a", id="low"))
+
+  def fps(self, val):
+    self.low = min(self.low, val)
     self.records.append(val)
     if len(self.records) >= 100:
       self.table.get("low").config(text=str(int(self.low)))
@@ -92,16 +205,42 @@ class Diagnostics(ttk.Frame):
       self.table.get("fps").config(text=str(int(avg)))
       self.records = []
 
-  def export(self,table):
-    with open(f"./{datetime.datetime.now(datetime.UTC).strftime("%d-%m-%y_%H-%M-%S")}.csv","w",encoding="utf8") as file:
-      file.writelines("\n".join([",".join([table.get(r,c)["text"] for c in range(len(table.table))]) for r in range(len(table.table[0]))]))
-
+  def export(self, table):
+    with open(
+      f"./{datetime.datetime.now(datetime.UTC).strftime('%d-%m-%y_%H-%M-%S')}.csv",
+      "w",
+      encoding="utf8",
+    ) as file:
+      file.writelines(
+        "\n".join(
+          [
+            ",".join([table.get(r, c)["text"] for c in range(len(table.table))])
+            for r in range(len(table.table[0]))
+          ]
+        )
+      )
 
 
 class AppOgl(OpenGLFrame):
-  def __init__(self,/,*args,parent = None, data = [], window_size=(640, 480), camera=Camera, lights=None, wireframe=False, func = lambda a : None, **kw):
+  objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
+  objects_rendered = set()  # set containing the indices of the pipeline objects to be rendered
+
+  nb_lights = 1
+
+  def __init__(
+    self,
+    /,
+    *args,
+    parent=None,
+    # data=[],
+    window_size=(640, 480),
+    camera=Camera,
+    # lights=None,
+    func=lambda a: None,
+    **kw,
+  ):
     root = parent if parent is not None else tk.Tk()
-    self.data = data
+    # self.data = data
     self.func = func
     self.mouse = {
       "x": 0.0,
@@ -116,10 +255,13 @@ class AppOgl(OpenGLFrame):
       "scroll_delta_x": 0.0,
       "scroll_delta_y": 0.0,
     }
-    self.wireframe = wireframe
-    self.lights = lights
     self.pipeline = Pipeline()
-    
+    self.programs = {
+      "flat": -1,
+      "interpolation": -1,
+      "phong": -1,
+    }
+
     self.default_static_uniforms = np.array(
       [
         {
@@ -127,39 +269,53 @@ class AppOgl(OpenGLFrame):
           "value": np.array([window_size[0], window_size[1]], dtype=np.float32),
           "type": "vec2",
         },
+        {
+          "name": "iRotation",
+          "value": False,
+          "type": "bool",
+        },
       ]
     )
-    self.entries = ["vertices","normals","colors","vert_shader","frag_shader","indices","mode","static_uniforms","model_matrix","vao_id",]
 
     self.cam = camera()
     logger.debug("Camera initialized")
     self.start_time = time.time()
     self.old_time = self.start_time
     self.new_time = self.old_time
-    self.pipeline.destroy()
-    super().__init__(root,*args,width = window_size[0],height = window_size[1], **kw)
+    super().__init__(root, *args, width=window_size[0], height=window_size[1], **kw)
     self.bind("<Motion>", self.on_drag)
     self.bind("<Button-1>", self.on_mouse)
-    self.bind("<MouseWheel>", self.on_mouse)
     self.bind("<ButtonRelease-1>", self.on_mouse)
+    match sys.platform:
+      case "win32" | "darwin":
+        self.bind("<MouseWheel>", self.on_mouse)
+      case "linux":
+        self.bind("<Button-4>", self.on_mouse)
+        self.bind("<Button-5>", self.on_mouse)
+      case _:
+        logger.error("system platform %s not recognized", sys.platform)
+        exit(1)
     self.animate = 1
-  # glfw.set_cursor_pos_callback(window, cursor_pos_callback)
-  # glfw.set_mouse_button_callback(window, mouse_button_callback)
-  # glfw.set_scroll_callback(window, scroll_callback)
 
-  
   def on_drag(self, event):
     self.cursor_pos_callback(event.x, event.y)
-  
-  def on_mouse(self,event):
+
+  def on_mouse(self, event):
     match event.type:
       case tk.EventType.ButtonPress:
-        self.mouse_button_callback("press")
+        match event.num:
+          case 1:
+            self.mouse_button_callback("press")
+          case 4:
+            self.scroll_callback(0, 5)
+          case 5:
+            self.scroll_callback(0, -5)
+          case _:
+            logger.debug("no button action registered")
       case tk.EventType.ButtonRelease:
         self.mouse_button_callback("release")
       case tk.EventType.MouseWheel:
-        self.scroll_callback(0, event.delta/10)
-
+        self.scroll_callback(0, event.delta / 10)
 
   def cursor_pos_callback(self, xpos, ypos):
     height = self.winfo_height()
@@ -193,67 +349,244 @@ class AppOgl(OpenGLFrame):
     GL.glFrontFace(GL.GL_CCW)  # winding order: counter clockwise indexing
     GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
 
-    # wireframe mode toggle (affects backface culling)
-    if self.wireframe:
-      GL.glDisable(GL.GL_CULL_FACE)  # face culling disabled
-      GL.glPolygonMode(GL.GL_FRONT, GL.GL_LINE)
-      GL.glPolygonMode(GL.GL_BACK, GL.GL_LINE)
-      logger.debug("Wireframe mode enabled.")
-    else:
-      GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
-      GL.glPolygonMode(GL.GL_FRONT, GL.GL_FILL)
-      GL.glPolygonMode(GL.GL_BACK, GL.GL_FILL)
+  def select_program(self, name):
+    # for each rendered object, update it with correct shaders/program
+    for idx in self.objects_rendered:
+      if self.programs[name] == -1:
+        self.create_program(name)  # updates self.programs[name]
+      self.update_object(idx, program_id=self.programs[name])
 
-      
-    for obj in self.data:
-      obj_data = {}
-      for entry in self.entries:
-        if entry in obj.keys():
-          obj_data[entry] = obj[entry]
-        else:
-          obj_data[entry] = None
-      self.pipeline.add_object(
-        vertices=obj_data["vertices"],
-        normals=obj_data["normals"],
-        colors=obj_data["colors"],
-        vert_shader=obj_data["vert_shader"],
-        frag_shader=obj_data["frag_shader"],
-        indices=obj_data["indices"],
-        mode=obj_data["mode"],
-        static_uniforms=np.concatenate(
-          (
-            self.default_static_uniforms,
-            (
-              obj_data["static_uniforms"] if obj_data["static_uniforms"] is not None else np.array([])
-            ),
-          )
-        ),
-        model_matrix=obj_data["model_matrix"],
-        vao_id=obj_data["vao_id"],
-      )
-    logger.debug("---------- All objects added (%d) ----------", len(self.data))
+  def create_program(self, name):
+    program_id = self.programs[name]
+    if program_id >= 0:  # program already created, nothing to do
+      return
+    logger.debug("---------- Adding new program (%s) ----------", name)
+    match name:
+      case "flat":
+        vert_shader = "./shaders/flat.vert"
+        frag_shader = "./shaders/flat.frag"
+      case "interpolation":
+        vert_shader = "./shaders/camera.vert"
+        frag_shader = "./shaders/interp.frag"
+      case "phong":
+        vert_shader = "./shaders/light.vert"
+        frag_shader = "./shaders/phong.frag"
+      case _:
+        logger.error('program "%s" not recognized', name)
+        exit(1)
+    self.programs[name] = self.pipeline.update_program(
+      program_id, vert_shader=vert_shader, frag_shader=frag_shader
+    )
+    logger.debug("%s program created", name)
+
+  def set_scene(self, name):
+    self.free_all_objects()
+    match name:
+      case "file" | "triangle" | "sphere":
+        obj = self.reserve_object(name)
+        self.update_object(obj, model_matrix=transform.identity())
+      case "sphere x2":
+        sphere1 = self.reserve_object("sphere")
+        self.update_object(sphere1, model_matrix=transform.translate(-1, 0, 0))
+        sphere2 = self.reserve_object("sphere")
+        self.update_object(sphere2, model_matrix=transform.translate(1, 0, 0))
+      case "sphere lighting":
+        sphere = self.reserve_object("sphere")
+        lights = {
+          "name": "lights",
+          "type": "lights",
+          "value": np.array(
+            [
+              Light(
+                position=(
+                  10 * np.cos(2 * np.pi * i / self.nb_lights),
+                  10 * np.sin(2 * np.pi * i / self.nb_lights),
+                  10,
+                ),
+                color=(1, 1, 1),
+                intensity=1,
+              )
+              for i in range(self.nb_lights)
+            ]
+          ),
+        }
+        num_lights = {"name": "num_lights", "type": "int", "value": lights["value"].shape[0]}
+
+        # material / ambient (static: they don't change between frames)
+        ambient_color = {
+          "name": "ambient_color",
+          "type": "vec3",
+          "value": np.array([0.1, 0.1, 0.1], dtype=np.float32),
+        }
+        k_ambient = {"name": "k_ambient", "type": "float", "value": 1.0}
+        k_diffuse = {"name": "k_diffuse", "type": "float", "value": 1.0}
+        k_specular = {"name": "k_specular", "type": "float", "value": 0.5}
+        shininess = {"name": "shininess", "type": "float", "value": 32.0}
+
+        uniforms = np.array(
+          [lights, num_lights, ambient_color, k_ambient, k_diffuse, k_specular, shininess],
+          dtype=object,
+        )
+        self.update_object(sphere, static_uniforms=uniforms)
+      case _:
+        logger.error('no scene name corresponding to "%s"', name)
+        exit(1)
+
+  def create_object(self, obj_name):
+    obj = {}
+    obj_program_name = ""
+    match obj_name:
+      case "file":
+        obj = {}
+      # 2d
+      case "triangle":
+        obj = {}
+      case "rectangle":
+        obj = {}
+      case "pentagon":
+        obj = {}
+      case "hexagon":
+        obj = {}
+      case "circle":
+        obj = {}
+      case "ellipse":
+        obj = {}
+      case "trapezoid":
+        obj = {}
+      case "star":
+        obj = {}
+      case "arrow":
+        obj = {}
+      # 3d
+      case "cube":
+        obj = {}
+      case "cylinder":
+        obj = {}
+      case "prism":
+        obj = {}
+      case "truncated_cone":
+        obj = {}
+      case "cone":
+        obj = {}
+      case "tetrahedron":
+        obj = {}
+      case "surface":
+        obj = {}
+      case "sphere":
+        obj = uv_sphere.generate(n=16)
+        obj_program_name = "interpolation"
+      case "torus":
+        obj = {}
+      case _:
+        logger.error('no object name corresponding to "%s"', obj_name)
+        exit(1)
+    self.create_program(obj_program_name)
+    obj["program_id"] = self.programs[obj_program_name]
+    self.add_object(obj_name, obj)
+    logger.debug("%s object created", obj_name)
+
+  def update_object(self, obj_id, **kwargs):
+    return self.pipeline.update_object(obj_id, **kwargs)
+
+  def add_object(self, obj_name, obj):
+    idx = self.pipeline.add_object(
+      vertices=obj.get("vertices"),
+      normals=obj.get("normals"),
+      colors=obj.get("colors"),
+      program_id=obj.get("program_id"),
+      indices=obj.get("indices"),
+      mode=obj.get("gl_mode"),
+      specific_static_uniforms=np.concatenate(
+        (
+          self.default_static_uniforms,
+          (obj.get("static_uniforms") if "static_uniforms" in obj.keys() else np.array([])),
+        )
+      ),
+    )
+    if obj_name in self.objects.keys():
+      self.objects[obj_name][1].append(idx)
+    else:
+      self.objects[obj_name] = [0, [idx]]
+
+  def free_object(self, obj_name):
+    entry = self.objects.get(obj_name)
+    if entry is None:
+      logger.error('cannot free object type "%s", not in memory', obj_name)
+      exit(1)
+    if entry[0] == 0:
+      logger.debug("nothing to free, nothing reserved")
+    self.objects_rendered.remove(entry[1][entry[0] - 1])
+    self.objects[obj_name][0] -= 1
+
+  def free_objects_category(self, obj_name):
+    entry = self.objects.get(obj_name)
+    if entry is None:
+      logger.error('cannot free object type "%s", not in memory', obj_name)
+      exit(1)
+    if entry[0] == 0:
+      logger.debug("nothing to free, nothing reserved")
+    for i in range(entry[0]):
+      self.free_object(obj_name)
+
+  def free_all_objects(self):
+    for name in self.objects.keys():
+      self.free_objects_category(name)
+
+  def reserve_object(self, obj_name):
+    entry = self.objects.get(obj_name)
+    # if there is no more objects to reserve, create a new one
+    if (entry is None) or (entry[0] >= len(entry[1])):
+      self.create_object(obj_name)
+      self.objects[obj_name][0] += 1
+    else:
+      self.objects[obj_name][0] += 1
+
+    entry = self.objects[obj_name]
+    obj_id = entry[1][entry[0] - 1]
+    self.objects_rendered.add(obj_id)
+    return obj_id
+
+  def toggle_rotation(self, enable):
+    self.default_static_uniforms[1]["value"] = enable
 
   def redraw(self):
     """Render a single frame"""
     self.old_time = self.new_time
     self.new_time = time.time()
-    self.func(int(1/(self.new_time - self.old_time)) if self.new_time != self.old_time else 999999)
+    self.func(
+      int(1 / (self.new_time - self.old_time)) if self.new_time != self.old_time else 999999
+    )
     GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
     uniforms = np.array(
-      [{  "name": "iTime",  "value": time.time() - self.start_time,  "type": "float",},]
-      + ([ self.lights ] if self.lights is not None else [])
+      [
+        {
+          "name": "iTime",
+          "value": time.time() - self.start_time,
+          "type": "float",
+        },
+        {
+          "name": "iMouse",
+          "value": np.array(
+            [
+              self.mouse["mb1_x"],
+              self.mouse["mb1_y"],
+              self.mouse["mb1_down_x"],
+              self.mouse["mb1_down_y"],
+            ],
+            dtype=np.float32,
+          ),
+          "type": "vec4",
+        },
+      ]
+      # + ([self.lights] if self.lights is not None else [])
     )
-    uniforms = self.cam.update(uniforms=np.concatenate((self.default_static_uniforms, uniforms)), mouse=self.mouse)
+    uniforms = self.cam.update(
+      uniforms=np.concatenate((self.default_static_uniforms, uniforms)), mouse=self.mouse
+    )
 
-    self.pipeline.draw(uniforms)
+    self.pipeline.draw(uniforms=uniforms, to_draw=self.objects_rendered)
 
 
-
-
-def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
-  app = App(data = data,window_size=window_size,camera=camera,lights=lights,wireframe=wireframe)
+def display(data=[], window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
+  App(data=data, window_size=window_size, camera=camera)
   return 0
-
-
-# if __name__ == "__main__":
-#   display()

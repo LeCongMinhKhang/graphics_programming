@@ -7,8 +7,9 @@ in pkgs.mkShell {
       glfw
       numpy
       opencv4
-      pandas
       pillow
+      pyopengltk
+      tkinter
     ]))
   ];
 }

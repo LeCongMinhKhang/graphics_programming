@@ -9,7 +9,7 @@ _ROOT = os.path.dirname(os.path.dirname(_SAMPLE_DIR))
 if _ROOT not in sys.path:
   sys.path.insert(0, _ROOT)
 
-import src.window
+import src.tkwindow
 from src.parsefile import objToPipelineable
 from src.camera.trackball import Trackball
 
@@ -72,9 +72,9 @@ def getInput():
       case "tetrahedron":
         return n_gon_piramid.generate("tetrahedron")
       case "surface":
-        return surface.generate(lambda x,y: np.sin(x)+np.sin(y),25,25,5)
+        return surface.generate(lambda x, y: np.sin(x) + np.sin(y), 25, 25, 5)
       case "sphere":
-        return uv_sphere.generate(n = 16)
+        return uv_sphere.generate(n=16)
       case "torus":
         return torus.generate(n=8)
 
@@ -88,4 +88,4 @@ if __name__ == "__main__":
     data[0]["vert_shader"] = vert_shader
     data[0]["frag_shader"] = frag_shader
 
-    src.window.display(data, camera=Trackball,wireframe=args.wireframe)
+    src.tkwindow.display(data, camera=Trackball, wireframe=args.wireframe)
