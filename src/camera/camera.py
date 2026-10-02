@@ -22,6 +22,7 @@ class Camera:
     for uniform in uniforms:
       if uniform["name"] == name:
         return uniform["value"]
+    self.logger.error('uniform "%s" not found', name)
     return None
 
   def update(self, uniforms, mouse, view_matrix=None, projection_matrix=None):
