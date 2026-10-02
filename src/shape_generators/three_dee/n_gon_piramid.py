@@ -1,5 +1,5 @@
 from numpy import pi, cos, sin, sqrt
-
+from ..tools import ngonPiramid_ngonGenerator
 def generate(type = "cone",base = 1.0, height = 1.0):
   n = 36
 
@@ -17,7 +17,7 @@ def generate(type = "cone",base = 1.0, height = 1.0):
   else:
     n = 36
 
-  obj = __circularish(n,base,-height/2)
+  obj = ngonPiramid_ngonGenerator(n,base,-height/2)
 
   top_index = len(obj["v"])
   obj["v"].append([0,0,height/2])
@@ -27,19 +27,19 @@ def generate(type = "cone",base = 1.0, height = 1.0):
 
   return obj
 
-def __circularish(n,size,z):
-  obj = {
-    "v"  : [],
-    "vt" : [],
-    "vn" : [],
-    "f"  : [],
-    "l"  : [],
-  }
-  for i in range(n):
-    theta = i * 2 * pi / n
-    obj["v"].append( [cos(theta) * size, sin(theta) * size, z] )
+# def __circularish(n,size,z):
+#   obj = {
+#     "v"  : [],
+#     "vt" : [],
+#     "vn" : [],
+#     "f"  : [],
+#     "l"  : [],
+#   }
+#   for i in range(n):
+#     theta = i * 2 * pi / n
+#     obj["v"].append( [cos(theta) * size, sin(theta) * size, z] )
 
-  for i in range(1,n-1):
-    obj["f"].append( [[0,i,i+1]] )
+#   for i in range(1,n-1):
+#     obj["f"].append( [[0,i,i+1]] )
 
-  return obj
+#   return obj

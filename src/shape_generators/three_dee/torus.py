@@ -1,4 +1,5 @@
 from numpy import pi, cos, sin
+from ..tools import uvSphere_torus_ngonGenerator
 from ._quad_triangulator import triangulationNation
 
 def generate(thickness = 1.0, hole_size = 1.0, n = 3):
@@ -21,10 +22,10 @@ def generate(thickness = 1.0, hole_size = 1.0, n = 3):
     "l"  : [],
   }
   
-  tempRing = __circularish(n,thickness,0)
+  tempRing = uvSphere_torus_ngonGenerator(n,thickness,0)
   centerOffset = thickness + hole_size
   for ring in tempRing:
-    obj["v"] = obj["v"] + __circularish(ringCount,centerOffset - ring[0],ring[1])
+    obj["v"] = obj["v"] + uvSphere_torus_ngonGenerator(ringCount,centerOffset - ring[0],ring[1])
   
   index = lambda i,j: (i % n) * ringCount + j % ringCount
 
@@ -36,9 +37,9 @@ def generate(thickness = 1.0, hole_size = 1.0, n = 3):
   return obj
 
 
-def __circularish(n,size,z):
-  res = []
-  for i in range(n):
-    theta = i * 2 * pi / n
-    res.append( [cos(theta) * size , sin(theta) * size, z] )
-  return res
+# def __circularish(n,size,z):
+#   res = []
+#   for i in range(n):
+#     theta = i * 2 * pi / n
+#     res.append( [cos(theta) * size , sin(theta) * size, z] )
+#   return res

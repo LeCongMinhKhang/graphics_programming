@@ -1,4 +1,5 @@
 from numpy import pi, cos, sin
+from ..tools import uvSphere_torus_ngonGenerator
 from ._quad_triangulator import triangulationNation
 
 def generate(size = 1.0, n = 3):
@@ -22,7 +23,7 @@ def generate(size = 1.0, n = 3):
 
   numOfVertPerLatRing = 2 * (n+1)
   for theta in listOfLatitudes:
-    obj["v"] = obj["v"] + __circularish(
+    obj["v"] = obj["v"] + uvSphere_torus_ngonGenerator(
         numOfVertPerLatRing, 
         sin(theta)*size,  # the radius of the lat ring
         - cos(theta)*size # z height of the lat ring
@@ -57,9 +58,9 @@ def generate(size = 1.0, n = 3):
   return obj
 
 
-def __circularish(n,size,z):
-  res = []
-  for i in range(n):
-    theta = i * 2 * pi / n
-    res.append( [cos(theta) * size , sin(theta) * size, z] )
-  return res
+# def __circularish(n,size,z):
+#   res = []
+#   for i in range(n):
+#     theta = i * 2 * pi / n
+#     res.append( [cos(theta) * size , sin(theta) * size, z] )
+#   return res

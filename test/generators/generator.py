@@ -16,12 +16,13 @@ from src.camera.trackball import Trackball
 from src import parsefile
 import argparse
 
-from inputs.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow
-from inputs.three_dee import cube, cylinder, n_gon_piramid, surface, uv_sphere, torus
+from src.shape_generators.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow
+from src.shape_generators.three_dee import cube, cylinder, n_gon_piramid, surface, uv_sphere, torus
 
 parser = argparse.ArgumentParser(description="3D viewer")
 parser.add_argument("--file", type=str, help="Path to file", default=None)
 parser.add_argument("--scene", type=str, help="Path to scene.py file", default=None)
+parser.add_argument("--wireframe",  action="store_true", help="Render in Wireframe")
 args = parser.parse_args()
 
 file_path = args.file
@@ -83,8 +84,8 @@ if __name__ == "__main__":
   frag_shader = "./shaders/interp.frag"
   obj = getInput()
   if obj is not None:
-    data = [objToPipelineable(obj)]
+    data = [obj]
     data[0]["vert_shader"] = vert_shader
     data[0]["frag_shader"] = frag_shader
 
-    src.window.display(data, camera=Trackball)
+    src.window.display(data, camera=Trackball, wireframe = args.wireframe)
