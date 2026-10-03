@@ -23,10 +23,18 @@ parser = argparse.ArgumentParser(description="3D viewer")
 parser.add_argument("--file", type=str, help="Path to file", default=None)
 parser.add_argument("--scene", type=str, help="Path to scene.py file", default=None)
 parser.add_argument("--wireframe",  action="store_true", help="Render in Wireframe")
-args = parser.parse_args()
+# args = parser.parse_args()
+args, extra_args = parser.parse_known_args()
 
 file_path = args.file
 scene_path = args.scene
+arbitrary_dict = {}
+for i in range(0, len(extra_args), 2):
+    # Ensure it looks like a flag and has a corresponding value
+    if extra_args[i].startswith('--') and i + 1 < len(extra_args):
+        key = extra_args[i].lstrip('-')
+        val = extra_args[i+1]
+        arbitrary_dict[key] = val
 
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 
@@ -41,38 +49,38 @@ def getInput():
   elif scene_path is not None:
     match scene_path:
       case "triangle":
-        return triangle.generate()
+        return triangle.generate(**arbitrary_dict)
       case "rectangle":
-        return rectangle.generate()
+        return rectangle.generate(**arbitrary_dict)
       case "pentagon":
-        return n_gon.generate("pentagon")
+        return n_gon.generate(shape_type="pentagon", **arbitrary_dict)
       case "hexagon":
-        return n_gon.generate("hexagon")
+        return n_gon.generate(shape_type="hexagon", **arbitrary_dict)
       case "circle":
-        return n_gon.generate("circle")
+        return n_gon.generate(shape_type="circle", **arbitrary_dict)
       case "ellipse":
-        return n_gon.generate("ellipse")
+        return n_gon.generate(shape_type="ellipse", **arbitrary_dict)
       case "trapezoid":
-        return trapezoid.generate()
+        return trapezoid.generate(**arbitrary_dict)
       case "star":
-        return star.generate()
+        return star.generate(**arbitrary_dict)
       case "arrow":
-        return arrow.generate()
+        return arrow.generate(**arbitrary_dict)
       # 3d
       case "cube":
-        return cube.generate()
+        return cube.generate(**arbitrary_dict)
       case "cylinder":
-        return cylinder.generate()
+        return cylinder.generate(**arbitrary_dict)
       case "prism":
-        return cylinder.generate(1.0, 3)
+        return cylinder.generate(n=3, **arbitrary_dict)
       case "truncated_cone":
-        return cylinder.generate(0.5)
+        return cylinder.generate(top_mult=0.5, **arbitrary_dict)
       case "cone":
-        return n_gon_piramid.generate("cone")
+        return n_gon_piramid.generate(shape_type="cone")
       case "tetrahedron":
-        return n_gon_piramid.generate("tetrahedron")
+        return n_gon_piramid.generate(shape_type="tetrahedron")
       case "surface":
-        return surface.generate(lambda x,y: np.sin(x)+np.sin(y),25,25,5)
+        return surface.generate(func=lambda x,y: np.sin(x)+np.sin(y))
       case "sphere":
         return uv_sphere.generate()
       case "torus":

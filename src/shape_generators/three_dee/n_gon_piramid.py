@@ -1,8 +1,22 @@
-from numpy import pi, cos, sin, sqrt
-from ..tools import ngonPiramid_ngonGenerator
-def generate(type = "cone",base = 1.0, height = 1.0):
-  n = 36
+import numpy as np
+from .. import tools
 
+import logging
+logger = logging.getLogger(__name__)
+def generate(shape_type:  str   = "cone",
+             base:        float = 1.0, 
+             height:      float = 2.0,
+             color:       str   = "position",
+             **kwargs):
+  shape_type = str(shape_type)   
+  base       = float(base) 
+  height     = float(height) 
+  color      = str(color)
+  for arg in kwargs.keys():
+    logger.debug(f"Unused kwarg: {arg} = {kwargs[arg]}")
+  
+  n = 6
+  z = 0
   if base <= 0:
     print("Warning: invalid size 0")
     base = 0.001
@@ -10,36 +24,41 @@ def generate(type = "cone",base = 1.0, height = 1.0):
     print("Warning: invalid size 0")
     height = 0.001
 
-  if type == "tetrahedron":
+  if shape_type == "tetrahedron":
     n = 3
-    edge_length = base * sqrt(3)
-    height =  edge_length * sqrt(6)/3
+    edge_length = base * np.sqrt(3)
+    height =  edge_length * np.sqrt(6)/3
+    z = height/4
+
   else:
     n = 36
+  data = tools.dataStructure()
+  data["vertices"] = tools.simple_ngonGenerator(n,base,-height/2 + z)
 
-  obj = ngonPiramid_ngonGenerator(n,base,-height/2)
+  data["vertices"].append([0,0,-height/2 + z])
+  data["vertices"].append([0,0,height/2 + z])
 
-  top_index = len(obj["v"])
-  obj["v"].append([0,0,height/2])
+  for i in range(n):
+    data["indices"].append(n)
+    data["indices"].append((i+1)%(n))
+    data["indices"].append(i)
+    
+    data["indices"].append(n+1)
+    data["indices"].append(i)
+    data["indices"].append((i+1)%(n))
+  tools.dataToNumpyArray(data)
+  
+  tools.vertexNeighborNormals(data)
+  tools.chooseColoring(color,textureColoring=textureColoring)(data)
+  tools.dataToNumpyArray(data)
+  
+  return data
 
-  for i in range(top_index):
-    obj["f"].append([[top_index,i,(i+1)%top_index]])
-
-  return obj
-
-# def __circularish(n,size,z):
-#   obj = {
-#     "v"  : [],
-#     "vt" : [],
-#     "vn" : [],
-#     "f"  : [],
-#     "l"  : [],
-#   }
-#   for i in range(n):
-#     theta = i * 2 * pi / n
-#     obj["v"].append( [cos(theta) * size, sin(theta) * size, z] )
-
-#   for i in range(1,n-1):
-#     obj["f"].append( [[0,i,i+1]] )
-
-#   return obj
+def textureColoring(data):
+  data["colors"] = np.empty((data["vertices"].shape[0],2),dtype=np.float32)
+  baseNum = data["vertices"].shape[0] - 2
+  for i in range(baseNum):
+    data["colors"][i] = [i/(baseNum-1),i/(baseNum-1)]
+  data["colors"][baseNum] = [1.0, 0.0]
+  data["colors"][baseNum+1] = [0.0, 1.0]
+  

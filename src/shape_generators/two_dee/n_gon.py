@@ -4,7 +4,17 @@ from .. import tools
 import logging
 logger = logging.getLogger(__name__)
 
-def generate(shape_type,size = 1.0, size_wide = 0.8, z = 0.0, color = "position",**kwargs):
+def generate(shape_type:  str   = "circle",
+             size:        float = 1.0, 
+             size_wide:   float = 0.8, 
+             z:           float = 0.0, 
+             color:       str   = "position",
+             **kwargs):
+  shape_type = str(shape_type)   
+  size       = float(size) 
+  size_wide  = float(size_wide) 
+  z          = float(z) 
+  color      = str(color)   
   for arg in kwargs.keys():
     logger.debug(f"Unused kwarg: {arg} = {kwargs[arg]}")
 

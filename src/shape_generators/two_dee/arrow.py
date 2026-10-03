@@ -5,7 +5,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def generate(length = 1.0,girth = 1.0, z = 0.0, color = "position",**kwargs):
+def generate(length:  float = 1.0,
+             girth:   float = 1.0, 
+             z:       float = 0.0, 
+             color:   str   = "position",
+             **kwargs):
+  length = float(length) 
+  girth  = float(girth) 
+  z      = float(z) 
+  color  = str(color)   
   for arg in kwargs.keys():
     logger.debug(f"Unused kwarg: {arg} = {kwargs[arg]}")
 

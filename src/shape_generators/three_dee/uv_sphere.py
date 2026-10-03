@@ -1,32 +1,39 @@
 from numpy import pi, cos, sin
-from ..tools import uvSphere_torus_ngonGenerator
-from ._quad_triangulator import triangulationNation
+import numpy as np
+from .. import tools
 
-def generate(size = 1.0, n = 3):
+import logging
+logger = logging.getLogger(__name__)
+
+def generate(size:  float = 1.0, 
+             n:     int   = 12, 
+             color: str   = "normal",
+             **kwargs):
+  size  = float(size) 
+  n     = int(n)   
+  color = str(color)   
+  for arg in kwargs.keys():
+    logger.debug(f"Unused kwarg: {arg} = {kwargs[arg]}")
+
   if size <= 0:
     size = 0.001
   # n is the magical density number whatever the hell
   if n < 1:
     n = 1
     
-  obj = {
-    "v"  : [],
-    "vt" : [],
-    "vn" : [],
-    "f"  : [],
-    "l"  : [],
-  }
+  data = tools.dataStructure()
 
   listOfLatitudes = []
   for i in range(1,n+1):
     listOfLatitudes.append( i * pi / (n + 1))
 
   numOfVertPerLatRing = 2 * (n+1)
-  for theta in listOfLatitudes:
-    obj["v"] = obj["v"] + uvSphere_torus_ngonGenerator(
+  vertices = np.empty((numOfVertPerLatRing*n+2,3),dtype=np.float32)
+  for i in range(n):
+    vertices[numOfVertPerLatRing*i:numOfVertPerLatRing*(i+1)] = tools.simple_ngonGenerator(
         numOfVertPerLatRing, 
-        sin(theta)*size,  # the radius of the lat ring
-        - cos(theta)*size # z height of the lat ring
+        sin(listOfLatitudes[i])*size,  # the radius of the lat ring
+        - cos(listOfLatitudes[i])*size # z height of the lat ring
         )
   
   index = lambda i,j: i * numOfVertPerLatRing + j % numOfVertPerLatRing
@@ -35,29 +42,41 @@ def generate(size = 1.0, n = 3):
   for i in range(n-1):
     for j in range(numOfVertPerLatRing):
       listOfQuads.append([index(i,j),index(i,j+1),index(i+1,j+1),index(i+1,j)])
-  obj["f"] = triangulationNation(listOfQuads)
+  indices = tools.quads2triangles(listOfQuads)
 
   # the poles
   poleIndex = numOfVertPerLatRing * n
-  obj["v"].append([0,0, - size])
-  obj["v"].append([0,0,   size])
+  vertices[numOfVertPerLatRing*n]     = [0,0, - size]
+  vertices[numOfVertPerLatRing*n + 1] = [0,0,   size]
 
   # triangle fan the long way around
   for i in range (numOfVertPerLatRing):
-    obj["f"].append([[
-      poleIndex,
-      (i+1) % numOfVertPerLatRing,
-      i
-    ]])
-    obj["f"].append([[
-      poleIndex + 1,
-      poleIndex - 1 - (i+1) % numOfVertPerLatRing,
-      poleIndex - 1 - i
-    ]])
+    indices.append(poleIndex)
+    indices.append((i+1) % numOfVertPerLatRing)
+    indices.append(i)
+    
+    indices.append(poleIndex + 1)
+    indices.append(poleIndex - 1 - (i+1) % numOfVertPerLatRing)
+    indices.append(poleIndex - 1 - i)
 
-  return obj
+  data["vertices"] = vertices
+  data["indices" ] = indices
 
+  tools.vertexNeighborNormals(data)
+  tools.chooseColoring(color,textureColoring=textureColoring)(data,latNum=n,numOfVertPerLatRing=numOfVertPerLatRing)
+  tools.dataToNumpyArray(data)
+  return data
 
+def textureColoring(data,latNum,numOfVertPerLatRing):
+  data["colors"] = np.zeros((latNum*numOfVertPerLatRing + 2, 2), dtype= np.float32)
+  for i in range(1,latNum):
+    for j in range(numOfVertPerLatRing):
+      data["colors"][i * numOfVertPerLatRing + j][0],data["colors"][1] = j / (numOfVertPerLatRing-1) ,1.0 - i / latNum
+  
+  poleIndex = latNum*numOfVertPerLatRing
+  data["colors"][poleIndex    ][0], data["colors"][poleIndex    ][1] = 0.0,1.0
+  data["colors"][poleIndex + 1][0], data["colors"][poleIndex + 1][1] = 1.0,0.0
+ 
 # def __circularish(n,size,z):
 #   res = []
 #   for i in range(n):

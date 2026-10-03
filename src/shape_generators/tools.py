@@ -1,6 +1,9 @@
 from numpy import pi, sin, cos
 import numpy as np
 from OpenGL import GL
+import logging
+
+logger = logging.getLogger(__name__)
 
 def dataStructure():
   return {
@@ -72,33 +75,24 @@ def ngon_ngonGenerator(n,size,w_multiplier,z):
 
   return data
 
-def uvSphere_torus_ngonGenerator(n,size,z):
+def simple_ngonGenerator(n,size,z):
   res = []
   for i in range(n):
     theta = i * 2 * pi / n
     res.append( [cos(theta) * size , sin(theta) * size, z] )
   return res
 
-def ngonPiramid_ngonGenerator(n,size,z):
-  data = dataStructure()
-  for i in range(n):
-    theta = i * 2 * pi / n
-    data["vertices"].append( [cos(theta) * size, sin(theta) * size, z] )
-
-  for i in range(1,n-1):
-    data["indices"].append(0,i,i+1)
-
-  return data
-
-def normalColoring(data):
+# colorings ###################################
+def normalColoring(data, **kwargs):
   data["colors"] = data["normals"]/2 + 0.5
   return data
 
-def positionalColoring(data):
-  data["colors"] = data["vertices"] / np.max(data["vertices"]) / 2 + 0.5 
+def positionalColoring(data, **kwargs):
+  data["colors"] = (data["vertices"] - np.min(data["vertices"], axis=0)) / (np.max(data["vertices"], axis=0) - np.min(data["vertices"], axis=0))
+
   return data
 
-def moduloColoring(data):
+def moduloColoring(data, **kwargs):
   data["colors"] = data["vertices"] * 500 % 1000 / 1000
   
 def chooseColoring(mode,textureColoring):
@@ -113,3 +107,35 @@ def chooseColoring(mode,textureColoring):
       return textureColoring
     case _:
       return positionalColoring
+    
+
+# vertex normals ###################################
+def vertexNeighborNormals(data):
+  normals = np.zeros_like(data["vertices"])
+  indices = data["indices"]
+  vertices = data["vertices"]
+  total = len(indices)
+  logger.debug("Starting normals")
+  def fastCross(c, d):
+    e = np.zeros_like(c)
+    e[0] = c[1]*d[2] - c[2]*d[1]
+    e[1] = c[2]*d[0] - c[0]*d[2]
+    e[2] = c[0]*d[1] - c[1]*d[0]
+    return e
+  for i in range(0,total,3):
+    if i % 10000 == 0: print(f"Doing {i}/{total} normal calculations", end="\r")
+    v0,v1,v2 = indices[i  ], indices[i+1], indices[i+2]
+    v00, v11 , v22 = vertices[v0], vertices[v1], vertices[v2]
+    d0 = v11 - v00
+    d1 = v22 - v11
+    d2 = v00 - v22
+
+    normals[v0] += fastCross(d0, -d2)
+    normals[v1] += fastCross(d1, -d0)
+    normals[v2] += fastCross(d2, -d1)
+    
+  logger.debug("Normalizing normals")
+  # don't ask me, my brain is out of steam
+  normals = normals / np.linalg.norm(normals, axis=1)[:, np.newaxis]
+
+  data["normals"] = normals

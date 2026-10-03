@@ -4,8 +4,19 @@ from .. import tools
 import logging
 logger = logging.getLogger(__name__)
 
-
-def generate(width_1 = 1.0, width_2 = 2.0 , height = 1.0, offset = 0.0, z = 0.0, color = "position",**kwargs):
+def generate(width_1: float = 1.0, 
+             width_2: float = 2.0 , 
+             height:  float = 1.0, 
+             offset:  float = 0.0, 
+             z:       float = 0.0, 
+             color:   str   = "position",
+             **kwargs):
+  width_1 = float(width_1) 
+  width_2 = float(width_2) 
+  height  = float(height) 
+  offset  = float(offset) 
+  z       = float(z) 
+  color   = str(color)   
   for arg in kwargs.keys():
     logger.debug(f"Unused kwarg: {arg} = {kwargs[arg]}")
 
