@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 
 class App(tk.Tk):
+  ROTATION_PERIOD_MAX = 10.0
+  ROTATION_PERIOD_MIN = 0.5
+
   def __init__(self, data=[], window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
     super().__init__()
     self.title("Graphics")
@@ -33,7 +36,7 @@ class App(tk.Tk):
     y = (self.winfo_screenheight() - h) // 2
     self.geometry(f"{w}x{h}+{x}+{y}")  # centers the window
     self.minsize(window_size[0], window_size[1])
-    self.grid_columnconfigure(index=(0), minsize=window_size[1])
+    self.grid_columnconfigure(index=(0), minsize=window_size[0])
     self.grid_columnconfigure(index=(1), weight=1)
     self.diagnostics = Diagnostics(self)
     self.diagnostics.grid(row=0, column=0, sticky="nw")
@@ -49,8 +52,9 @@ class App(tk.Tk):
     self.diagnostics.lift(self.viewport)
 
     # options
+    self.lighting_var = tk.StringVar()
     self.wireframe_var = tk.BooleanVar()
-    self.rotation_var = tk.BooleanVar()
+    self.rotation_var = tk.DoubleVar()
     self.nb_lights_var = tk.IntVar()
 
     # UI definition
@@ -106,6 +110,7 @@ class App(tk.Tk):
         values=list(self.viewport.programs.keys()),
         default=0,
         state="readonly",
+        textvariable=self.lighting_var,
         command=self.change_lighting,
       ),
     )
@@ -129,10 +134,17 @@ class App(tk.Tk):
       ),
     )
     self.table.newRow(
-      self.table.label(text="Rotation"),
-      self.table.checkButton(
-        id="rotation", command=self.change_rotation, variable=self.rotation_var
+      self.table.label(text="Rotation speed"),
+      self.table.slider(
+        from_=0,
+        to=10,
+        orient="horizontal",
+        command=self.change_rotation,
+        variable=self.rotation_var,
       ),
+      # self.table.checkButton(
+      #   id="rotation", command=self.change_rotation, variable=self.rotation_var
+      # ),
     )
     self.after(100, self.viewport.printContext)
     self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -150,31 +162,39 @@ class App(tk.Tk):
   def change_wireframe(self):
     if self.wireframe_var.get():
       GL.glDisable(GL.GL_CULL_FACE)  # face culling disabled
-      GL.glPolygonMode(GL.GL_FRONT, GL.GL_LINE)
-      GL.glPolygonMode(GL.GL_BACK, GL.GL_LINE)
+      GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
       logger.debug("Wireframe mode enabled.")
     else:
       GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
-      GL.glPolygonMode(GL.GL_FRONT, GL.GL_FILL)
-      GL.glPolygonMode(GL.GL_BACK, GL.GL_FILL)
+      GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
       logger.debug("Wireframe mode disabled.")
 
   def change_nb_lights(self):
     self.viewport.nb_lights = self.nb_lights_var.get()
+    logger.debug("%d lights total", self.nb_lights_var.get())
 
   def change_scene(self, event):
     value = event.widget.get()
     logger.debug("%s scene selected.", value)
-    self.viewport.set_scene(value)
+    self.update_widgets(self.viewport.set_scene(value))
 
   def change_lighting(self, event):
     value = event.widget.get()
     logger.debug("%s lighting selected.", value)
     self.viewport.select_program(value)
 
-  def change_rotation(self):
-    logger.debug("rotation %s", "enabled" if self.rotation_var.get() else "disabled")
-    self.viewport.toggle_rotation(self.rotation_var.get())
+  def change_rotation(self, _):
+    speed = self.rotation_var.get()
+    if speed < self.ROTATION_PERIOD_MIN:
+      rotation = 0
+    else:
+      rotation = max(self.ROTATION_PERIOD_MAX - speed, self.ROTATION_PERIOD_MIN)
+    logger.debug("rotation period set to %s s (if 0 then disabled)", rotation)
+    self.viewport.set_rotation_period(rotation)
+
+  def update_widgets(self, lighting=None):
+    if lighting is not None:
+      self.lighting_var.set(lighting)
 
 
 class Diagnostics(ttk.Frame):
@@ -222,11 +242,6 @@ class Diagnostics(ttk.Frame):
 
 
 class AppOgl(OpenGLFrame):
-  objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
-  objects_rendered = set()  # set containing the indices of the pipeline objects to be rendered
-
-  nb_lights = 1
-
   def __init__(
     self,
     /,
@@ -242,6 +257,14 @@ class AppOgl(OpenGLFrame):
     root = parent if parent is not None else tk.Tk()
     # self.data = data
     self.func = func
+
+    self.objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
+    self.objects_rendered = (
+      set()
+    )  # set containing the indices of the pipeline objects to be rendered
+
+    self.nb_lights = 1
+
     self.mouse = {
       "x": 0.0,
       "y": 0.0,
@@ -271,8 +294,8 @@ class AppOgl(OpenGLFrame):
         },
         {
           "name": "iRotation",
-          "value": False,
-          "type": "bool",
+          "value": 0.0,
+          "type": "float",
         },
       ]
     )
@@ -366,10 +389,10 @@ class AppOgl(OpenGLFrame):
         vert_shader = "./shaders/flat.vert"
         frag_shader = "./shaders/flat.frag"
       case "interpolation":
-        vert_shader = "./shaders/camera.vert"
+        vert_shader = "./shaders/interp.vert"
         frag_shader = "./shaders/interp.frag"
       case "phong":
-        vert_shader = "./shaders/light.vert"
+        vert_shader = "./shaders/lighting.vert"
         frag_shader = "./shaders/phong.frag"
       case _:
         logger.error('program "%s" not recognized', name)
@@ -381,17 +404,29 @@ class AppOgl(OpenGLFrame):
 
   def set_scene(self, name):
     self.free_all_objects()
+    program_name = ""
     match name:
       case "file" | "triangle" | "sphere":
-        obj = self.reserve_object(name)
+        obj, program_name = self.reserve_object(name)
         self.update_object(obj, model_matrix=transform.identity())
       case "sphere x2":
-        sphere1 = self.reserve_object("sphere")
-        self.update_object(sphere1, model_matrix=transform.translate(-1, 0, 0))
-        sphere2 = self.reserve_object("sphere")
-        self.update_object(sphere2, model_matrix=transform.translate(1, 0, 0))
+        program_name = "flat"
+        sphere1, _ = self.reserve_object("sphere")
+        self.update_object(
+          sphere1,
+          program=program_name,
+          model_matrix=transform.translate(-1, 0, 0),
+        )
+        program_name = "interpolation"
+        sphere2, _ = self.reserve_object("sphere")
+        self.update_object(
+          sphere2,
+          program=program_name,
+          model_matrix=transform.translate(1, 0, 0),
+        )
       case "sphere lighting":
-        sphere = self.reserve_object("sphere")
+        program_name = "phong"
+        sphere, _ = self.reserve_object("sphere")
         lights = {
           "name": "lights",
           "type": "lights",
@@ -427,10 +462,11 @@ class AppOgl(OpenGLFrame):
           [lights, num_lights, ambient_color, k_ambient, k_diffuse, k_specular, shininess],
           dtype=object,
         )
-        self.update_object(sphere, static_uniforms=uniforms)
+        self.update_object(sphere, program=program_name, static_uniforms=uniforms)
       case _:
         logger.error('no scene name corresponding to "%s"', name)
         exit(1)
+    return program_name
 
   def create_object(self, obj_name):
     obj = {}
@@ -482,10 +518,14 @@ class AppOgl(OpenGLFrame):
         exit(1)
     self.create_program(obj_program_name)
     obj["program_id"] = self.programs[obj_program_name]
-    self.add_object(obj_name, obj)
+    obj_id = self.add_object(obj_name, obj)
     logger.debug("%s object created", obj_name)
+    return obj_id, obj_program_name
 
-  def update_object(self, obj_id, **kwargs):
+  def update_object(self, obj_id, program=None, **kwargs):
+    if program is not None:
+      self.create_program(program)
+      return self.pipeline.update_object(obj_id, program_id=self.programs[program], **kwargs)
     return self.pipeline.update_object(obj_id, **kwargs)
 
   def add_object(self, obj_name, obj):
@@ -507,6 +547,7 @@ class AppOgl(OpenGLFrame):
       self.objects[obj_name][1].append(idx)
     else:
       self.objects[obj_name] = [0, [idx]]
+    return idx
 
   def free_object(self, obj_name):
     entry = self.objects.get(obj_name)
@@ -515,6 +556,7 @@ class AppOgl(OpenGLFrame):
       exit(1)
     if entry[0] == 0:
       logger.debug("nothing to free, nothing reserved")
+      return
     self.objects_rendered.remove(entry[1][entry[0] - 1])
     self.objects[obj_name][0] -= 1
 
@@ -534,20 +576,28 @@ class AppOgl(OpenGLFrame):
 
   def reserve_object(self, obj_name):
     entry = self.objects.get(obj_name)
+    obj_program_name = ""
     # if there is no more objects to reserve, create a new one
     if (entry is None) or (entry[0] >= len(entry[1])):
-      self.create_object(obj_name)
+      _, obj_program_name = self.create_object(obj_name)
       self.objects[obj_name][0] += 1
     else:
+      obj_program_name = self.get_program_name(entry[1][entry[0] - 1])
       self.objects[obj_name][0] += 1
 
-    entry = self.objects[obj_name]
+    entry = self.objects[obj_name]  # update the entry if object created
     obj_id = entry[1][entry[0] - 1]
     self.objects_rendered.add(obj_id)
-    return obj_id
+    return obj_id, obj_program_name
 
-  def toggle_rotation(self, enable):
-    self.default_static_uniforms[1]["value"] = enable
+  def get_program_name(self, program_id):
+    """Returns the name associated with the program id (linear search)."""
+    for name, idx in self.programs.items():
+      if idx == program_id:
+        return name  # idx are assumed unique
+
+  def set_rotation_period(self, period):
+    self.default_static_uniforms[1]["value"] = period
 
   def redraw(self):
     """Render a single frame"""

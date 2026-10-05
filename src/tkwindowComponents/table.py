@@ -50,6 +50,12 @@ class Tablerone(ttk.Frame):
       self.dict[id] = button
     return button
 
+  def slider(self, /, id=None, **kwargs):
+    slider = ttk.Scale(self, **kwargs)
+    if id is not None:
+      self.dict[id] = slider
+    return slider
+
   def button(self, /, id=None, **kwargs):
     button = ttk.Button(self, **kwargs)
     if id is not None:
