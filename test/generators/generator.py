@@ -17,7 +17,7 @@ from src import parsefile
 import argparse
 
 from src.shape_generators.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow
-from src.shape_generators.three_dee import cube, cylinder, n_gon_piramid, surface, uv_sphere, torus
+from src.shape_generators.three_dee import cube, cylinder, n_gon_pyramid, surface, uv_sphere, torus
 
 parser = argparse.ArgumentParser(description="3D viewer")
 parser.add_argument("--file", type=str, help="Path to file", default=None)
@@ -76,9 +76,9 @@ def getInput():
       case "truncated_cone":
         return cylinder.generate(top_mult=0.5, **arbitrary_dict)
       case "cone":
-        return n_gon_piramid.generate(shape_type="cone")
+        return n_gon_pyramid.generate(shape_type="cone")
       case "tetrahedron":
-        return n_gon_piramid.generate(shape_type="tetrahedron")
+        return n_gon_pyramid.generate(shape_type="tetrahedron")
       case "surface":
         return surface.generate(func=lambda x, y: np.sin(x) + np.sin(y))
       case "sphere":

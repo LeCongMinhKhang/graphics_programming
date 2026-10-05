@@ -12,7 +12,10 @@ import logging
 
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
-import src.shape_generators.D3.uv_sphere as uv_sphere
+
+# import src.shape_generators.D3.uv_sphere as uv_sphere
+from src.shape_generators.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow
+from src.shape_generators.three_dee import cube, cylinder, n_gon_pyramid, surface, uv_sphere, torus
 from src.light import Light
 import src.transform as transform
 
@@ -93,7 +96,6 @@ class App(tk.Tk):
           "surface",
           "sphere",
           "sphere x2",
-          "sphere lighting",
           "torus",
         ],
         default=17,
@@ -170,7 +172,7 @@ class App(tk.Tk):
       logger.debug("Wireframe mode disabled.")
 
   def change_nb_lights(self):
-    self.viewport.nb_lights = self.nb_lights_var.get()
+    self.viewport.update_lights(self.nb_lights_var.get())
     logger.debug("%d lights total", self.nb_lights_var.get())
 
   def change_scene(self, event):
@@ -189,7 +191,7 @@ class App(tk.Tk):
       rotation = 0
     else:
       rotation = max(self.ROTATION_PERIOD_MAX - speed, self.ROTATION_PERIOD_MIN)
-    logger.debug("rotation period set to %s s (if 0 then disabled)", rotation)
+    # logger.debug("rotation period set to %s s (if 0 then disabled)", rotation)
     self.viewport.set_rotation_period(rotation)
 
   def update_widgets(self, lighting=None):
@@ -264,6 +266,7 @@ class AppOgl(OpenGLFrame):
     )  # set containing the indices of the pipeline objects to be rendered
 
     self.nb_lights = 1
+    self.update_lights(self.nb_lights)
 
     self.mouse = {
       "x": 0.0,
@@ -372,6 +375,49 @@ class AppOgl(OpenGLFrame):
     GL.glFrontFace(GL.GL_CCW)  # winding order: counter clockwise indexing
     GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
 
+  def update_lights(self, nb_lights, uniforms=None):
+    self.nb_lights = nb_lights
+    if uniforms is not None:
+      self.light_uniforms = uniforms
+      return
+    lights = {
+      "name": "lights",
+      "type": "lights",
+      "value": np.array(
+        [
+          Light(
+            position=(
+              10 * np.cos(2 * np.pi * i / self.nb_lights),
+              10 * np.sin(2 * np.pi * i / self.nb_lights),
+              10,
+            ),
+            color=(1, 1, 1),
+            intensity=1,
+          )
+          for i in range(self.nb_lights)
+        ]
+      ),
+    }
+    num_lights = {"name": "num_lights", "type": "int", "value": lights["value"].shape[0]}
+
+    # material / ambient (static: they don't change between frames)
+    ambient_color = {
+      "name": "ambient_color",
+      "type": "vec3",
+      "value": np.array([0.1, 0.1, 0.1], dtype=np.float32),
+    }
+    k_ambient = {"name": "k_ambient", "type": "float", "value": 1.0}
+    k_diffuse = {"name": "k_diffuse", "type": "float", "value": 1.0}
+    k_specular = {"name": "k_specular", "type": "float", "value": 0.5}
+    shininess = {"name": "shininess", "type": "float", "value": 32.0}
+
+    uniforms = np.array(
+      [lights, num_lights, ambient_color, k_ambient, k_diffuse, k_specular, shininess],
+      dtype=object,
+    )
+    self.light_uniforms = uniforms
+    logger.debug("changed lights uniforms")
+
   def select_program(self, name):
     # for each rendered object, update it with correct shaders/program
     for idx in self.objects_rendered:
@@ -406,7 +452,26 @@ class AppOgl(OpenGLFrame):
     self.free_all_objects()
     program_name = ""
     match name:
-      case "file" | "triangle" | "sphere":
+      case (
+        "triangle"
+        | "rectangle"
+        | "pentagon"
+        | "hexagon"
+        | "circle"
+        | "ellipse"
+        | "trapezoid"
+        | "star"
+        | "arrow"
+        | "cube"
+        | "cylinder"
+        | "prism"
+        | "truncated_cone"
+        | "cone"
+        | "tetrahedron"
+        | "surface"
+        | "sphere"
+        | "torus"
+      ):
         obj, program_name = self.reserve_object(name)
         self.update_object(obj, model_matrix=transform.identity())
       case "sphere x2":
@@ -424,45 +489,6 @@ class AppOgl(OpenGLFrame):
           program=program_name,
           model_matrix=transform.translate(1, 0, 0),
         )
-      case "sphere lighting":
-        program_name = "phong"
-        sphere, _ = self.reserve_object("sphere")
-        lights = {
-          "name": "lights",
-          "type": "lights",
-          "value": np.array(
-            [
-              Light(
-                position=(
-                  10 * np.cos(2 * np.pi * i / self.nb_lights),
-                  10 * np.sin(2 * np.pi * i / self.nb_lights),
-                  10,
-                ),
-                color=(1, 1, 1),
-                intensity=1,
-              )
-              for i in range(self.nb_lights)
-            ]
-          ),
-        }
-        num_lights = {"name": "num_lights", "type": "int", "value": lights["value"].shape[0]}
-
-        # material / ambient (static: they don't change between frames)
-        ambient_color = {
-          "name": "ambient_color",
-          "type": "vec3",
-          "value": np.array([0.1, 0.1, 0.1], dtype=np.float32),
-        }
-        k_ambient = {"name": "k_ambient", "type": "float", "value": 1.0}
-        k_diffuse = {"name": "k_diffuse", "type": "float", "value": 1.0}
-        k_specular = {"name": "k_specular", "type": "float", "value": 0.5}
-        shininess = {"name": "shininess", "type": "float", "value": 32.0}
-
-        uniforms = np.array(
-          [lights, num_lights, ambient_color, k_ambient, k_diffuse, k_specular, shininess],
-          dtype=object,
-        )
-        self.update_object(sphere, program=program_name, static_uniforms=uniforms)
       case _:
         logger.error('no scene name corresponding to "%s"', name)
         exit(1)
@@ -470,49 +496,48 @@ class AppOgl(OpenGLFrame):
 
   def create_object(self, obj_name):
     obj = {}
-    obj_program_name = ""
+    obj_program_name = "interpolation"
     match obj_name:
       case "file":
         obj = {}
       # 2d
       case "triangle":
-        obj = {}
+        obj = triangle.generate()
       case "rectangle":
-        obj = {}
+        obj = rectangle.generate()
       case "pentagon":
-        obj = {}
+        obj = n_gon.generate("pentagon")
       case "hexagon":
-        obj = {}
+        obj = n_gon.generate("hexagon")
       case "circle":
-        obj = {}
+        obj = n_gon.generate("circle")
       case "ellipse":
-        obj = {}
+        obj = n_gon.generate("ellipse")
       case "trapezoid":
-        obj = {}
+        obj = trapezoid.generate(size=1, size_wide=2)
       case "star":
-        obj = {}
+        obj = star.generate()
       case "arrow":
-        obj = {}
+        obj = arrow.generate()
       # 3d
       case "cube":
-        obj = {}
+        obj = cube.generate()
       case "cylinder":
-        obj = {}
+        obj = cylinder.generate()
       case "prism":
-        obj = {}
+        obj = cylinder.generate(n=3)
       case "truncated_cone":
-        obj = {}
+        obj = cylinder.generate(top_mult=0.5)
       case "cone":
-        obj = {}
+        obj = n_gon_pyramid.generate("cone")
       case "tetrahedron":
-        obj = {}
+        obj = n_gon_pyramid.generate("tetrahedron")
       case "surface":
-        obj = {}
+        obj = surface.generate(func=lambda x, y: np.sin(x) + np.sin(y))
       case "sphere":
         obj = uv_sphere.generate(n=16)
-        obj_program_name = "interpolation"
       case "torus":
-        obj = {}
+        obj = torus.generate(n=16)
       case _:
         logger.error('no object name corresponding to "%s"', obj_name)
         exit(1)
@@ -560,19 +585,17 @@ class AppOgl(OpenGLFrame):
     self.objects_rendered.remove(entry[1][entry[0] - 1])
     self.objects[obj_name][0] -= 1
 
-  def free_objects_category(self, obj_name):
+  def free_object_category(self, obj_name):
     entry = self.objects.get(obj_name)
     if entry is None:
       logger.error('cannot free object type "%s", not in memory', obj_name)
       exit(1)
-    if entry[0] == 0:
-      logger.debug("nothing to free, nothing reserved")
     for i in range(entry[0]):
       self.free_object(obj_name)
 
   def free_all_objects(self):
     for name in self.objects.keys():
-      self.free_objects_category(name)
+      self.free_object_category(name)
 
   def reserve_object(self, obj_name):
     entry = self.objects.get(obj_name)
@@ -607,28 +630,32 @@ class AppOgl(OpenGLFrame):
       int(1 / (self.new_time - self.old_time)) if self.new_time != self.old_time else 999999
     )
     GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
-    uniforms = np.array(
-      [
-        {
-          "name": "iTime",
-          "value": time.time() - self.start_time,
-          "type": "float",
-        },
-        {
-          "name": "iMouse",
-          "value": np.array(
-            [
-              self.mouse["mb1_x"],
-              self.mouse["mb1_y"],
-              self.mouse["mb1_down_x"],
-              self.mouse["mb1_down_y"],
-            ],
-            dtype=np.float32,
-          ),
-          "type": "vec4",
-        },
-      ]
-      # + ([self.lights] if self.lights is not None else [])
+    uniforms = np.concatenate(
+      (
+        np.array(
+          [
+            {
+              "name": "iTime",
+              "value": time.time() - self.start_time,
+              "type": "float",
+            },
+            {
+              "name": "iMouse",
+              "value": np.array(
+                [
+                  self.mouse["mb1_x"],
+                  self.mouse["mb1_y"],
+                  self.mouse["mb1_down_x"],
+                  self.mouse["mb1_down_y"],
+                ],
+                dtype=np.float32,
+              ),
+              "type": "vec4",
+            },
+          ]
+        ),
+        self.light_uniforms,
+      )
     )
     uniforms = self.cam.update(
       uniforms=np.concatenate((self.default_static_uniforms, uniforms)), mouse=self.mouse
