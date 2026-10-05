@@ -24,8 +24,8 @@ def generate(top_mult:  float = 1.0,
   data = tools.dataStructure()
   data["vertices"] += tools.simple_ngonGenerator(n,radius,-height/2)
   data["vertices"] += tools.simple_ngonGenerator(n,radius*top_mult,height/2)
-  data["vertices"].append([0.0,-height/2,0.0])
-  data["vertices"].append([0.0,height/2,0.0])
+  data["vertices"].append([0.0,0.0,-height/2])
+  data["vertices"].append([0.0,0.0, height/2])
 
   listOfQuads = []
   for i in range(n):
