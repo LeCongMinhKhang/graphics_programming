@@ -4,15 +4,14 @@ import glfw
 import time
 import logging
 
-from .tinkertonk import Tonkapi
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
+
 
 logger = logging.getLogger(__name__)
 
 
 def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
-
   # Mouse state, keyed simply
   mouse = {
     "x": 0.0,
@@ -151,24 +150,9 @@ def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=
   logger.debug("Camera initialized")
 
   start_time = time.time()
-  
-  tinker = Tonkapi()
-  old_time = start_time
-  new_time = start_time
-  # n = 0
+
   # Loop until the user closes the window
   while not glfw.window_should_close(window):
-    # n = (n+1) % 1_000_000
-
-    # FPS calculation
-    old_time = new_time
-    new_time = time.time()
-    if (new_time == old_time):
-      tinker.fps(999999)
-    else:
-      tinker.fps(1/(new_time-old_time))
-      # tinker.fps(n)
-
     GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
     # Render here, e.g. using pyOpenGL
     uniforms = np.array(
@@ -201,7 +185,6 @@ def display(data, window_size=(640, 480), camera=Camera, lights=None, wireframe=
 
     glfw.swap_buffers(window)  # Swap front and back buffers
     glfw.poll_events()  # Poll for and process events
-  tinker.kill()
   pipeline.destroy()
   glfw.terminate()
   return 0
