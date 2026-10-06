@@ -114,6 +114,20 @@ In @struct_diagram is provided a more detailed diagram to better understand the 
   caption: [Diagram of the software structure],
 ) <struct_diagram>
 
+Our application initializes with an empty scene, with no objects displayed. The user can then select one of the registered scenes. To allow better performances and a fluid user experience, objects from the different scenes are cached. This results in short waiting time when changing scenes. The process is detailed in @scene_select.
+#figure(
+  image("images/scene_select.drawio.png", width: 100%),
+  caption: [Details of the scene selection],
+) <scene_select>
+
+== Objects
+In this project, objects are defined by their attributes:
+- mesh: a mesh composed of vertices, normals and colors, stored in a VAO (Vertex Array Object)
+- program: the program used to render the object. A single program can be used to render several objects.
+- uniforms: as the programs are shared between objects, an objects can redefine some uniforms of the program to adapt the rendering
+
+== Scenes
+Scenes are a collection of objects. The objects positions in the world are changed thanks to the `model` matrix uniform.
 
 
 = Shape Generators
@@ -294,9 +308,7 @@ Note that this implementation can not handle illegal (eg. divide by 0) or limits
 
 = Shaders
 
-In a given scene, each object possesses its own shader program. A shader program is created from 2 shader: a vertex shader and a fragment shader. Specifically, during object creation (in `Pipeline.add_object`), the 2 shader files are uploaded to the GPU then compiled. Then there are linked into a program, associated with the object. Then the 2 former shader objects are destroyed. \
-Thus remains a program for each object.
-
+In a given scene, each object is associated with a shader program. A shader program is created from 2 shader: a vertex shader and a fragment shader. Specifically, when a program is created (in `Pipeline.update_program`), the 2 shader files are uploaded to the GPU before being compiled. They are then linked into a program, and the 2 former shader objects are destroyed. \
 
 However, the shaders might need some associated data: uniforms and textures. The `UManager class` is charged to handle these.
 - #underline[uniforms]: \ #text[
@@ -310,7 +322,7 @@ However, the shaders might need some associated data: uniforms and textures. The
 
 = Lighting
 
-The lighting of a scene can completely change its final rendering, hence it plays a major role in computer graphics. In this program, we chose to handle scene lights thanks to a data structure that is passed to the fragment shader as a uniform. This uniform is in fact an array of lights, to enable the definition of several of them.
+The lighting of a scene can completely change its final rendering, hence it plays a major role in computer graphics. In this project, we chose to handle scene lights thanks to a data structure that is passed to the fragment shader as a uniform. This uniform is in fact an array of lights, to enable the definition of multiple lights.
 A light is declared in python as an instance of the class `Light`, that is simply a container to hold the attributes defining the light. \
 Currently, the class is as follow:
 #align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
@@ -319,11 +331,19 @@ With the light passed down to the fragment shader, we simply have to apply a for
 
 = GUI
 // explain user interface choices and navigation
-In this version, the graphical user interface (GUI) is limited to a window displaying the OpenGL rendering. It supports mouse interaction through the use of camera, but no head-up display (HUD) or keyboard interaction.
+The graphical user interface (GUI) is composed of a GL display window left and an option panel right.
+#figure(
+  image("images/gui.png", width: 100%),
+  caption: [Application interface],
+)
+The left panel displays the scene selected by the user on the left panel under the option "Displaying". In the top left corner a little window indicates the frame displayed per second as well as the frame rate lowest 1% computed on a 1s time window.
+This panel supports mouse interaction through the use of camera: the user can change the direction of the camera by dragging the mouse with left click, zoom with mouse wheel and change the camera position in the scene by dragging the mouse with right click.
 
-= Performance
+The right panel provides the ability for the user to change the scene itself. They thus can select a predefined scene or import an `.obj` file under the "Scene" section. The "Lighting" option apply a given shading program to every object in the scene (some scenes may have objects with different programs). Other options allow the user to change the number of lights, enable wireframe mode or change the rotation speed of the scene.
 
-Performance and frame rate has not been yet investigated.
+// = Performance
+
+// Performance and frame rate has not been yet investigated.
 
 = Challenges encountered
 The integration of cameras inside the project architecture raised some questions about the project modularity and organisation. Indeed, cameras are needed to represent a 3D scene and one could decide to not provide any support from the library and ask the user to compute the view and projection matrices directly inside the vertex shader.
