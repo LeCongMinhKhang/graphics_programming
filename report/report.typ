@@ -263,6 +263,7 @@ At the pole, the nearest n-gon to the pole vertex is connected similar to how th
 // A Torus is a shape much like a doughnut, or a ring you wear on your hand, or a disc with a hole in it, or a chain link. But for rendering, most people would have this ring be rounded, not a flat shape like a disc, or a flat shape (in a another orthogonal direction). You would also want this shape to be evenly thick and smooth not like a slightly bumpy bread surface of a doughnut.
 
 // With this requirement of what a torus should look like in the end, one must imagine how to create such a shape.
+
 To generate a Torus, we need to take into consideration its properties.
 For it roundedness, we can define it as cutting the torus in half (bisecting) through the plane containing the z axis (the center of the torus's hole) and have its cross section be a circle. The cross section of the torus should be a circle regardless of where you break it in half. In essence we are revolving a circle around some center axis (eg. the z axis in a 3d x y z coordinate system).
 
