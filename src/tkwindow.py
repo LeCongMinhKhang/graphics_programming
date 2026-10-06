@@ -6,14 +6,16 @@ import time
 import sys
 import datetime
 import numpy as np
+import importlib
+import pkgutil
 
+import scenes as scenes_pkg  # the scenes directory
 
 import logging
 
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
 
-# import src.shape_generators.D3.uv_sphere as uv_sphere
 from src.shape_generators.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow
 from src.shape_generators.three_dee import cube, cylinder, n_gon_pyramid, surface, uv_sphere, torus
 from src.light import Light
@@ -24,6 +26,15 @@ from .tkwindowComponents.stylingHelper import RowTracker as Row, StyleEnum as St
 from .tkwindowComponents.scrollable import ScrollableList
 
 logger = logging.getLogger(__name__)
+
+
+def load_all_scenes(gl_app):
+  all_scenes = {}
+  for module_info in pkgutil.iter_modules(scenes_pkg.__path__):
+    module = importlib.import_module(f"{scenes_pkg.__name__}.{module_info.name}")
+    if hasattr(module, "scenes"):
+      all_scenes.update(module.scenes(gl_app))  # gather every scene
+  return all_scenes
 
 
 class App(tk.Tk):
@@ -54,6 +65,9 @@ class App(tk.Tk):
     self.viewport.grid(row=0, column=0, sticky="nw")
     self.diagnostics.lift(self.viewport)
 
+    all_scenes = load_all_scenes(self.viewport)
+    self.viewport.scenes = all_scenes
+
     # options
     self.lighting_var = tk.StringVar()
     self.wireframe_var = tk.BooleanVar()
@@ -76,29 +90,8 @@ class App(tk.Tk):
       self.table.label(text="Displaying:"),
       self.table.comboBox(
         id="scenetype",
-        values=[
-          "file",
-          "triangle",
-          "rectangle",
-          "pentagon",
-          "hexagon",
-          "circle",
-          "ellipse",
-          "trapezoid",
-          "star",
-          "arrow",
-          "cube",
-          "cylinder",
-          "prism",
-          "truncated_cone",
-          "cone",
-          "tetrahedron",
-          "surface",
-          "sphere",
-          "sphere x2",
-          "torus",
-        ],
-        default=17,
+        values=sorted(["file"] + list(all_scenes.keys())),
+        # default=17,
         state="readonly",
         command=self.change_scene,
       ),
@@ -178,7 +171,7 @@ class App(tk.Tk):
   def change_scene(self, event):
     value = event.widget.get()
     logger.debug("%s scene selected.", value)
-    self.update_widgets(self.viewport.set_scene(value))
+    self.update_widgets(lighting=self.viewport.set_scene(value))
 
   def change_lighting(self, event):
     value = event.widget.get()
@@ -259,6 +252,7 @@ class AppOgl(OpenGLFrame):
     root = parent if parent is not None else tk.Tk()
     # self.data = data
     self.func = func
+    self.scenes = {}
 
     self.objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
     self.objects_rendered = (
@@ -425,7 +419,7 @@ class AppOgl(OpenGLFrame):
         self.create_program(name)  # updates self.programs[name]
       self.update_object(idx, program_id=self.programs[name])
 
-  def create_program(self, name):
+  def create_program(self, name: str):
     program_id = self.programs[name]
     if program_id >= 0:  # program already created, nothing to do
       return
@@ -450,49 +444,12 @@ class AppOgl(OpenGLFrame):
 
   def set_scene(self, name):
     self.free_all_objects()
-    program_name = ""
-    match name:
-      case (
-        "triangle"
-        | "rectangle"
-        | "pentagon"
-        | "hexagon"
-        | "circle"
-        | "ellipse"
-        | "trapezoid"
-        | "star"
-        | "arrow"
-        | "cube"
-        | "cylinder"
-        | "prism"
-        | "truncated_cone"
-        | "cone"
-        | "tetrahedron"
-        | "surface"
-        | "sphere"
-        | "torus"
-      ):
-        obj, program_name = self.reserve_object(name)
-        self.update_object(obj, model_matrix=transform.identity())
-      case "sphere x2":
-        program_name = "flat"
-        sphere1, _ = self.reserve_object("sphere")
-        self.update_object(
-          sphere1,
-          program=program_name,
-          model_matrix=transform.translate(-1, 0, 0),
-        )
-        program_name = "interpolation"
-        sphere2, _ = self.reserve_object("sphere")
-        self.update_object(
-          sphere2,
-          program=program_name,
-          model_matrix=transform.translate(1, 0, 0),
-        )
-      case _:
-        logger.error('no scene name corresponding to "%s"', name)
-        exit(1)
-    return program_name
+    scene = self.scenes.get(name)
+    if scene is None:
+      logger.error('no scene name corresponding to "%s"', name)
+      exit(1)
+    scene.build_scene()
+    return scene.program_name
 
   def create_object(self, obj_name):
     obj = {}
@@ -547,7 +504,7 @@ class AppOgl(OpenGLFrame):
     logger.debug("%s object created", obj_name)
     return obj_id, obj_program_name
 
-  def update_object(self, obj_id, program=None, **kwargs):
+  def update_object(self, obj_id: int, program: str = None, **kwargs):
     if program is not None:
       self.create_program(program)
       return self.pipeline.update_object(obj_id, program_id=self.programs[program], **kwargs)
