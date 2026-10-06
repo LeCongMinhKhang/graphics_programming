@@ -267,11 +267,12 @@ class AppOgl(OpenGLFrame):
     self.mouse = {
       "x": 0.0,
       "y": 0.0,
-      "mb1_x": 0.0,
-      "mb1_y": 0.0,  # current position (GL coords, y-up)
-      "mb1_down_x": 0.0,
-      "mb1_down_y": 0.0,  # position at last press
+      "mb_x": 0.0,
+      "mb_y": 0.0,  # current position (GL coords, y-up)
+      "mb_press_x": 0.0,
+      "mb_press_y": 0.0,  # position at last press
       "mb1_down": False,
+      "mb2_down": False,
       "scroll_x": 0.0,
       "scroll_y": 0.0,
       "scroll_delta_x": 0.0,
@@ -308,6 +309,8 @@ class AppOgl(OpenGLFrame):
     self.bind("<Motion>", self.on_drag)
     self.bind("<Button-1>", self.on_mouse)
     self.bind("<ButtonRelease-1>", self.on_mouse)
+    self.bind("<Button-3>", self.on_mouse)  # on linux mb2
+    self.bind("<ButtonRelease-3>", self.on_mouse)  # on linux mb2
     match sys.platform:
       case "win32" | "darwin":
         self.bind("<MouseWheel>", self.on_mouse)
@@ -323,39 +326,46 @@ class AppOgl(OpenGLFrame):
     self.cursor_pos_callback(event.x, event.y)
 
   def on_mouse(self, event):
-    match event.type:
-      case tk.EventType.ButtonPress:
-        match event.num:
-          case 1:
-            self.mouse_button_callback("press")
-          case 4:
-            self.scroll_callback(0, 5)
-          case 5:
-            self.scroll_callback(0, -5)
-          case _:
-            logger.debug("no button action registered")
-      case tk.EventType.ButtonRelease:
-        self.mouse_button_callback("release")
-      case tk.EventType.MouseWheel:
-        self.scroll_callback(0, event.delta / 10)
+    match event.num:
+      case 1:
+        self.mb1_callback(event.type)
+      case 3:
+        self.mb2_callback(event.type)
+      case 4:
+        self.scroll_callback(0, 5)
+      case 5:
+        self.scroll_callback(0, -5)
+      case _:
+        logger.debug("no button action registered")
 
   def cursor_pos_callback(self, xpos, ypos):
     height = self.winfo_height()
     self.mouse["x"] = xpos
     self.mouse["y"] = height - ypos
-    if self.mouse["mb1_down"]:  # update mb1 position only when mb1 is pressed
-      self.mouse["mb1_x"] = xpos
-      self.mouse["mb1_y"] = int(height) - ypos  # flip so y=0 is bottom
+    # update mb position only when a button is pressed
+    if self.mouse["mb1_down"] or self.mouse["mb2_down"]:
+      self.mouse["mb_x"] = xpos
+      self.mouse["mb_y"] = int(height) - ypos  # flip so y=0 is bottom
 
-  def mouse_button_callback(self, action):
-    if action == "press":
+  def mb1_callback(self, action):
+    if action == tk.EventType.ButtonPress:
       self.mouse["mb1_down"] = True
-      self.mouse["mb1_down_x"] = self.mouse["x"]
-      self.mouse["mb1_down_y"] = self.mouse["y"]
-      self.mouse["mb1_x"] = self.mouse["x"]
-      self.mouse["mb1_y"] = self.mouse["y"]
-    elif action == "release":
+      self.mouse["mb_press_x"] = self.mouse["x"]
+      self.mouse["mb_press_y"] = self.mouse["y"]
+      self.mouse["mb_x"] = self.mouse["x"]
+      self.mouse["mb_y"] = self.mouse["y"]
+    elif action == tk.EventType.ButtonRelease:
       self.mouse["mb1_down"] = False
+
+  def mb2_callback(self, action):
+    if action == tk.EventType.ButtonPress:
+      self.mouse["mb2_down"] = True
+      self.mouse["mb_press_x"] = self.mouse["x"]
+      self.mouse["mb_press_y"] = self.mouse["y"]
+      self.mouse["mb_x"] = self.mouse["x"]
+      self.mouse["mb_y"] = self.mouse["y"]
+    elif action == tk.EventType.ButtonRelease:
+      self.mouse["mb2_down"] = False
 
   def scroll_callback(self, xoffset, yoffset):
     self.mouse["scroll_x"] += xoffset
@@ -372,8 +382,7 @@ class AppOgl(OpenGLFrame):
     GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
 
     GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
-    GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
-    logger.debug("Wireframe mode disabled.")
+    GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)  # wireframe disabled
 
   def update_lights(self, nb_lights, uniforms=None):
     self.nb_lights = nb_lights
@@ -616,10 +625,10 @@ class AppOgl(OpenGLFrame):
               "name": "iMouse",
               "value": np.array(
                 [
-                  self.mouse["mb1_x"],
-                  self.mouse["mb1_y"],
-                  self.mouse["mb1_down_x"],
-                  self.mouse["mb1_down_y"],
+                  self.mouse["mb_x"],
+                  self.mouse["mb_y"],
+                  self.mouse["mb_press_x"],
+                  self.mouse["mb_press_y"],
                 ],
                 dtype=np.float32,
               ),

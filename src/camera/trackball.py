@@ -69,13 +69,17 @@ class Trackball(Camera):
 
   def update(self, uniforms, mouse):
     winsize = self.get_uniform_value(uniforms, "iResolution")
-    if (mouse["mb1_x"] == mouse["mb1_down_x"]) and (
-      mouse["mb1_y"] == mouse["mb1_down_y"]
-    ):  # if new click, reinit old position and dont move
-      self.mouse_old = (mouse["mb1_down_x"], mouse["mb1_down_y"])
-    else:
-      self.drag(self.mouse_old, (mouse["mb1_x"], mouse["mb1_y"]), winsize)
-      self.mouse_old = (mouse["mb1_x"], mouse["mb1_y"])
+
+    if mouse["mb1_down"] or mouse["mb2_down"]:
+      if (mouse["mb_x"] == mouse["mb_press_x"]) and (mouse["mb_y"] == mouse["mb_press_y"]):
+        # if new click, reinit old position and dont move
+        self.mouse_old = (mouse["mb_press_x"], mouse["mb_press_y"])
+      else:
+        if mouse["mb1_down"]:
+          self.drag(self.mouse_old, (mouse["mb_x"], mouse["mb_y"]), winsize)
+        elif mouse["mb2_down"]:
+          self.pan(self.mouse_old, (mouse["mb_x"], mouse["mb_y"]))
+        self.mouse_old = (mouse["mb_x"], mouse["mb_y"])
 
     self.zoom(mouse["scroll_y"], winsize[1])
     return super().update(
@@ -84,3 +88,23 @@ class Trackball(Camera):
       view_matrix=self._view_matrix(),
       projection_matrix=self._projection_matrix(winsize),
     )
+
+  # def update(self, uniforms, mouse):
+  #   winsize = self.get_uniform_value(uniforms, "iResolution")
+  #   if (mouse["mb1_x"] == mouse["mb1_down_x"]) and (
+  #     mouse["mb1_y"] == mouse["mb1_down_y"]
+  #   ):  # if new click, reinit old position and dont move
+  #     self.mouse_old = (mouse["mb1_down_x"], mouse["mb1_down_y"])
+  #   else:
+  #     self.drag(self.mouse_old, (mouse["mb1_x"], mouse["mb1_y"]), winsize)
+  #     self.mouse_old = (mouse["mb1_x"], mouse["mb1_y"])
+
+  #   if (mouse["mb2_down"]):
+  #     self.pan()
+  #   self.zoom(mouse["scroll_y"], winsize[1])
+  #   return super().update(
+  #     uniforms,
+  #     mouse,
+  #     view_matrix=self._view_matrix(),
+  #     projection_matrix=self._projection_matrix(winsize),
+  #   )
