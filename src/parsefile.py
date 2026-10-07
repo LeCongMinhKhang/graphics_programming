@@ -36,10 +36,14 @@ def parseFile(path):
           if vnNone is None:
             vnNone = [None for i in obj["vn"][0]] if len (obj["vn"]) > 0 else None 
         case "f":
-          parsed = [[int(v)-1 if v is not None else None for v in i.split("/")] for i in arr[1:]]
-          
-          # [[int(f[0])-1 for f in [e.split("/") for e in arr[1:]]]]
           keys = arr[1:]
+          newKeys = [keys[0],keys[1],keys[2]]
+          for i in range(3,len(keys)):
+            newKeys.append(keys[0])
+            newKeys.append(keys[i-1])
+            newKeys.append(keys[i])
+          keys = newKeys
+          parsed = [[int(v)-1 if v is not None else None for v in i.split("/")] for i in keys]
           for i in range(len(keys)):
             verticesIndex = tripletHashmap.get(keys[i], None)
 
