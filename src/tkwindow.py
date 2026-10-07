@@ -15,6 +15,7 @@ import logging
 
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
+from src.parsefile import parseFile
 
 from src.shape_generators.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow
 from src.shape_generators.three_dee import cube, cylinder, n_gon_pyramid, surface, uv_sphere, torus
@@ -95,6 +96,7 @@ class App(tk.Tk):
         state="readonly",
         command=self.change_scene,
       ),
+      self.table.entry(id="filePath")
     )
 
     # lighting
@@ -171,7 +173,7 @@ class App(tk.Tk):
   def change_scene(self, event):
     value = event.widget.get()
     logger.debug("%s scene selected.", value)
-    self.update_widgets(lighting=self.viewport.set_scene(value))
+    self.update_widgets(self.viewport.set_scene(value, self.table.get(id="filePath").get()))
 
   def change_lighting(self, event):
     value = event.widget.get()
@@ -369,6 +371,11 @@ class AppOgl(OpenGLFrame):
     GL.glFrontFace(GL.GL_CCW)  # winding order: counter clockwise indexing
     GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
 
+    GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
+    GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
+    logger.debug("Wireframe mode disabled.")
+    
+
   def update_lights(self, nb_lights, uniforms=None):
     self.nb_lights = nb_lights
     if uniforms is not None:
@@ -386,7 +393,7 @@ class AppOgl(OpenGLFrame):
               10,
             ),
             color=(1, 1, 1),
-            intensity=1,
+            intensity=1/(i+1),
           )
           for i in range(self.nb_lights)
         ]
@@ -442,21 +449,23 @@ class AppOgl(OpenGLFrame):
     )
     logger.debug("%s program created", name)
 
-  def set_scene(self, name):
+  def set_scene(self, name, filePath = None):
     self.free_all_objects()
-    scene = self.scenes.get(name)
-    if scene is None:
+    scene = self.scenes.get(name if filePath is not None else filePath)
+    if scene is None and name != "file":
       logger.error('no scene name corresponding to "%s"', name)
       exit(1)
+    if scene is None and name == "file":
+      self.reserve_object("file",filePath)
     scene.build_scene()
     return scene.program_name
 
-  def create_object(self, obj_name):
+  def create_object(self, obj_name, filePath = None):
     obj = {}
     obj_program_name = "interpolation"
     match obj_name:
       case "file":
-        obj = {}
+        obj = parseFile(filePath)
       # 2d
       case "triangle":
         obj = triangle.generate()
@@ -490,7 +499,7 @@ class AppOgl(OpenGLFrame):
       case "tetrahedron":
         obj = n_gon_pyramid.generate("tetrahedron")
       case "surface":
-        obj = surface.generate(func=lambda x, y: np.sin(x) + np.sin(y))
+        obj = surface.generate(func=lambda x, y: np.sin(x) + np.sin(y), n=3)
       case "sphere":
         obj = uv_sphere.generate(n=16)
       case "torus":
@@ -554,12 +563,12 @@ class AppOgl(OpenGLFrame):
     for name in self.objects.keys():
       self.free_object_category(name)
 
-  def reserve_object(self, obj_name):
-    entry = self.objects.get(obj_name)
+  def reserve_object(self, obj_name, filePath = None):
+    entry = self.objects.get(obj_name if obj_name != "file" else filePath)
     obj_program_name = ""
     # if there is no more objects to reserve, create a new one
     if (entry is None) or (entry[0] >= len(entry[1])):
-      _, obj_program_name = self.create_object(obj_name)
+      _, obj_program_name = self.create_object(obj_name,filePath)
       self.objects[obj_name][0] += 1
     else:
       obj_program_name = self.get_program_name(entry[1][entry[0] - 1])

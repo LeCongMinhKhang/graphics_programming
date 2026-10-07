@@ -40,13 +40,13 @@ def generate(size:  float = 1.0,
   return data
 
 def textureColoring(data):
-  normals = np.empty((8,2),dtype=np.float32)
-  normals[0] = [1.0,0.0]
-  normals[1] = [2/3,0.0]
-  normals[2] = [1/3,0.0]
-  normals[3] = [0.0,0.0]
-  normals[4] = [1.0,0.5]
-  normals[5] = [2/3,0.5]
-  normals[6] = [1/3,0.5]
-  normals[7] = [0.0,0.5]
-  data["normals"] = normals
+  colors = np.empty((8,2),dtype=np.float32)
+  colors[0] = [1.0,0.0]
+  colors[1] = [2/3,0.0]
+  colors[2] = [1/3,0.0]
+  colors[3] = [0.0,0.0]
+  colors[4] = [1.0,0.5]
+  colors[5] = [2/3,0.5]
+  colors[6] = [1/3,0.5]
+  colors[7] = [0.0,0.5]
+  data["colors"] = colors
