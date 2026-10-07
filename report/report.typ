@@ -142,8 +142,13 @@ data = {
   "mode":    # GL mode, indicating the rendering mode (eg: GL\_TRIANGLES, GL\_TRIANGL_STRIP, ...)
 }
 ```
-All shape generators and `.obj` files parsing outputs are converted to this format.
-At the moment, for the sake of simplicity, the rendering mode is always GL_TRIANGLES, and colors and normals are automatically populated.
+All shape generators and `.obj` files parsing outputs are converted to this format before being passed into the rendering pipeline.
+
+For the sake of simplicity, the rendering mode is always GL_TRIANGLES.
+
+Colors are set either as a function of a vertex's positioning or a vertex's normal.
+
+Normals are generated with an algorithm. For each triangles specified, we take the normal of the triangle with the cross operation, then we add it to each of the vertices' normals. Finally, we normalize the length of these normals. The result of this is that every vertices receives normals from all the faces it is a part of, thus in general case where vertices are relatively evenly spread it would be pointing away from the object.
 
 == Obj files
 From the wiki, we can see that `.obj` files are text files with the syntax:
@@ -169,8 +174,8 @@ For now, we shall only focus on the 2 fields v (Vertex) and f (Triangle):
 
 - For `data["indices"]`, the "f" fields in `.obj` files are 1-indexed when referencing which vertex is part of a triangle. As such, converting "f" fields to "indices" will need to decrement all referenced indices by 1. We collect only the `X` number in each pattern `X/Y/Z`.
 == 2D shapes
-=== `__circularish` helper function
-Generating circles comes up a few times in some of the 2D and 3D shapes generation methods, thus a helper function like `__circularish` is very convenient.
+=== `ngonGenerator` helper function
+Generating circles comes up a few times in some of the 2D and 3D shapes generation methods, thus a helper function like `ngonGenerator` is very convenient.
 
 The exact functionality and implementation varies depending on use cases, which is why the function is copied accross files instead of declared and imported. In general, it takes in:
 - `n`: number of vertices generated
@@ -191,16 +196,18 @@ for i in range(n) we create a new vertex at coordinate:
 These shapes are relatively simple, so each generator only takes as parameters a few basic arguments to scale them in different aspects. The vertices then gets their coordinate multiplied accordingly and populating `data["indices"]` is hardcoded.
 
 === n-gon shapes (pentagon, hexagon, circle, ellipse)
-All of these shapes can be generated with some variation of the `__circularish` function. Notably:
+All of these shapes can be generated with some variation of the `ngonGenerator` function. Notably:
 - Pentagon: n = 5
 - Hexagon: n = 6
 - Circle: n = 60
 - Ellipse: n = 60, with a multiplier to the width of the n-gon in one of the axis
 
-These rings of vertices are triangulated to all have 1 common vertex, and then iterate around the n-gon for the other 2 vertices. This method is simple and ensures the correct ordering of the indices but can leads to rendering artifacts (pinching) around the common vertex. A better way would be to do it in zigzag strips, or manually implementing the GL_TRIANGLE_FAN mode (recall that we assume that all shapes will always render in GL_TRIANGLES mode).
+How these rings of vertices used to get triangulated is that they all have 1 common vertex, and then iterate around the n-gon for the other 2 vertices. This method is simple and ensures the correct ordering of the indices but can leads to rendering artifacts around the common vertex.
+
+How they are currently triangulated is adding an extra vertex in the center of the `n-gon` and manually implementing the GL_TRIANGLE_FAN mode with GL_TRIANGLES.
 
 == 3D shapes
-=== `triangulationNation` helper function
+=== `quads2triangles` helper function
 A lot of 3d shapes are more conveniently generated as quads (4 sided polygon). However, to be able to render in mode GL_TRIANGLES, we need to convert these lists of quads into a list of triangles.
 
 It follows:
@@ -249,8 +256,8 @@ Then quads of the top and bottom faces of the cube are hard coded, paying attent
 
 Finally, as the order of vertex declaration is suitable, we can use a loop to iterate over the 4 side faces of the cube, with modulo operation `%` to be able to connect the last vertex pair to the first.
 
-=== Simple `__circularish` and `triangulationNation` shapes (cylinder, cone, truncated cone, tetrahedron, prism)
-All of these shapes are generated in a process similar to the Cube, as some combination of `__circularish` for the top/bottom faces and a loop to generate quads as side walls:
+=== Simple `ngonGenerator` and `quads2triangles` shapes (cylinder, cone, truncated cone, tetrahedron, prism)
+All of these shapes are generated in a process similar to the Cube, as some combination of `ngonGenerator` for the top/bottom faces and a loop to generate quads as side walls:
 - Cylinder: 2 n-gon top/bottom faces with a list of quads connecting the two
 - Prism: 2 triangle top/bottom faces with a list of quads connecting the two
 - Truncated cone: a Cylinder with 1 of the circles scaled down
@@ -260,30 +267,17 @@ All of these shapes are generated in a process similar to the Cube, as some comb
 === Sphere
 There are multiple ways to create a sphere, we chose uv sphere due to the similarity in construction with the earlier shapes.
 
-In which, a sphere contains multiple `__circularish` n-gons of various sizes and z offsets, akin to the latitudes of a globe. These rings are connected to adjacent loops akin to how the sides of a cylinder was generated, only for multiple levels.
+In which, a sphere contains multiple `ngonGenerator` n-gons of various sizes and z offsets, akin to the latitudes of a globe. These rings are connected to adjacent loops akin to how the sides of a cylinder was generated, only for multiple levels.
 At the pole, the nearest n-gon to the pole vertex is connected similar to how the cone was generated.
 
 === Torus
-// The torus is generated by treating it like a cylinder that connects the top and bottom faces.
-// A torus could be generated by creating an n-gon in the xz plane, offset from the origin, and then appling some matrix transformation to rotate it around the z axis. However, we did it by
-
-// // REDO (clarify)
-// In particular, we first generate an n-gon using `__circularish`, then use the coordinates of these vertices to inform the offset from the z axis and z placements for generating the "verticle lines" of our "cylinder", which are made using `__circularish` and connected to eachother like the other shapes.
-//
-//
-// Call back to the Cube generator where we prioritized generating vertices in pairs to make 4 parallel lines for the sides of the cube to make triangulating the side faces of the cube simpler. For a torus, we shall do the same but the parallel side edges are instead edges that follow around the ring that is the torus, prioritzing generating the
-
-// Here, imagine cutting the torus like a bagel sandwich way, you will see
-// A Torus is a shape much like a doughnut, or a ring you wear on your hand, or a disc with a hole in it, or a chain link. But for rendering, most people would have this ring be rounded, not a flat shape like a disc, or a flat shape (in a another orthogonal direction). You would also want this shape to be evenly thick and smooth not like a slightly bumpy bread surface of a doughnut.
-
-// With this requirement of what a torus should look like in the end, one must imagine how to create such a shape.
 
 To generate a Torus, we need to take into consideration its properties.
 For it roundedness, we can define it as cutting the torus in half (bisecting) through the plane containing the z axis (the center of the torus's hole) and have its cross section be a circle. The cross section of the torus should be a circle regardless of where you break it in half. In essence we are revolving a circle around some center axis (eg. the z axis in a 3d x y z coordinate system).
 
 Because we are working with computers, it makes more sense to only generate a few slices, a few angles of the torus bisection to create a circular cross section, to avoid having to generate and render an infinite amount of vertices. So each "circular cross section" would be an `n-gon` shape and around the torus, there should only be `m` cross sections where `m` is a positive integer.
 
-It is difficult to generate an `n-gon` cross-sections at different angles of bisection. So, instead of generating `m` `n-gon` cross sections, we can generate 1 piece of each `m` cross sections `n` times. To motivate this approach, imagine cutting the doughnut along the xy plane. You will see that the cross section now will be composed of 2 circles centered on the center of the torus' hole, one for the outside edge of the doughnut, one for the inner edge. We can think of making `m` pieces with an ` __circularish` generator producing `m-gon`s that are centered on the axis of revolution (the z axis). These `m-gon`s would have its radius and z offset borrowed from a point along the surface of the torus.
+It is difficult to generate an `n-gon` cross-sections at different angles of bisection. So, instead of generating `m` `n-gon` cross sections, we can generate 1 piece of each `m` cross sections `n` times. To motivate this approach, imagine cutting the doughnut along the xy plane. You will see that the cross section now will be composed of 2 circles centered on the center of the torus' hole, one for the outside edge of the doughnut, one for the inner edge. We can think of making `m` pieces with an ` ngonGenerator` generator producing `m-gon`s that are centered on the axis of revolution (the z axis). These `m-gon`s would have its radius and z offset borrowed from a point along the surface of the torus.
 
 This means, in practice:
 - we first generate a temporary `n-gon` offset from the z axis
@@ -298,8 +292,6 @@ func = lambda x, y: numpy.sin(x) + numpy.cos(y)
 
 It also takes in parameters to control the limits of the surface to be shown in the x and y direction (`+-limx` and `+-limy`).
 
-// REDO (proper pseudo code or simpler language)
-// Then we iterate ix, iy over the ranges of [-limx,limx] and [-limy,limy] creating vertices with the coordinates (ix,iy,lambda(x,y)) and connect them with eachother using `triangulationNation`. Note that this implementation will not handle illegal or limits and can't render (or render accurately) discontinuous functions.
 We consider a small slice of the xyz coordinate space where we want to render the surface of our function.
 It spans `+-limx` in the x direction, `+-limy` in the y direction and infinitely in the z direction.
 We populate it evenly with a vertex every dx and dy, and have that vertex's z offset be determined by the lambda function provided.
