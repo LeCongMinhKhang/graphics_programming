@@ -10,6 +10,7 @@ def generate(width_1: float = 1.0,
              offset:  float = 0.0, 
              z:       float = 0.0, 
              color:   str   = "position",
+             hex = 0xff69ff,
              **kwargs):
   width_1 = float(width_1) 
   width_2 = float(width_2) 
@@ -38,7 +39,7 @@ def generate(width_1: float = 1.0,
 
   data["indices" ] = np.array(tools.quads2triangles([[0,1,2,3]]),dtype=np.uint32)
   
-  tools.chooseColoring(mode=color,textureColoring=textureColoring)(data)
+  tools.chooseColoring(mode=color,textureColoring=textureColoring)(data, hex=hex)
 
   tools.dataToNumpyArray(data)
   return data

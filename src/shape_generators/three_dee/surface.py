@@ -9,6 +9,7 @@ def generate(func = lambda x,y: 0,
              limy:        int  = 25, 
              n:           int  = 5, 
              color:       str  = "normal", 
+             hex = 0xff69ff,
              calcNormals: bool = True,**kwargs):
   limx        = int(limx) 
   limy        = int(limy) 
@@ -46,7 +47,7 @@ def generate(func = lambda x,y: 0,
   else: data["normals"] = np.full_like(data["vertices"],fill_value=[1.0,105/255,1.0])
   
   logger.debug("Picking Colors")
-  tools.chooseColoring(color,textureColoring=textureColoring)(data,totalx=2**n * 2*limx + 1,totaly=2**n * 2*limy + 1)
+  tools.chooseColoring(color,textureColoring=textureColoring)(data, hex = hex,totalx=2**n * 2*limx + 1,totaly=2**n * 2*limy + 1)
   
   logger.debug("Standardizing data type")
   tools.dataToNumpyArray(data)

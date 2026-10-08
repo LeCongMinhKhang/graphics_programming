@@ -96,6 +96,12 @@ def positionalColoring(data, **kwargs):
 def moduloColoring(data, **kwargs):
   data["colors"] = data["vertices"] * 500 % 1000 / 1000
   
+def hexColoring(data, hex = 0xff69ff, **kwargs):
+  red   = float(((hex & 0xff0000) >> 16)/0xff)
+  green = float(((hex & 0x00ff00) >> 8 )/0xff)
+  blue  = float(((hex & 0x0000ff) >> 0 )/0xff)
+  data["colors"] = np.full_like(data["vertices"],[red,green,blue])
+  
 def chooseColoring(mode,textureColoring):
   match mode:
     case "position":
@@ -106,6 +112,8 @@ def chooseColoring(mode,textureColoring):
       return moduloColoring
     case "texture":
       return textureColoring
+    case "hex":
+      return hexColoring
     case _:
       return positionalColoring
     

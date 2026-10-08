@@ -9,6 +9,7 @@ def generate(n:           int   = 5,
              size_inner:  float = 0.0, 
              z:           float = 0.0, 
              color:       str   = "position",
+             hex = 0xff69ff,
              **kwargs):
   n          = int(n)  
   size       = float(size)
@@ -28,7 +29,7 @@ def generate(n:           int   = 5,
 
   data["normals" ] = np.full((data["vertices"].shape[0],3),[0.0,0.0,1.0],dtype=np.float32)
 
-  tools.chooseColoring(mode=color,textureColoring=textureColoring)(data)
+  tools.chooseColoring(mode=color,textureColoring=textureColoring)(data,hex=hex)
 
   tools.dataToNumpyArray(data)
   return data

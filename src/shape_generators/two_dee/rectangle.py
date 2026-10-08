@@ -8,7 +8,9 @@ logger = logging.getLogger(__name__)
 def generate(width:   float = 1.0,
              height:  float = 2.0, 
              z:       float = 0.0, 
-             color:   str   = "position",**kwargs):
+             color:   str   = "position",
+             hex = 0xff69ff,
+             **kwargs):
   width  = float(width)
   height = float(height)
   z      = float(z)
@@ -34,7 +36,7 @@ def generate(width:   float = 1.0,
 
   data["indices" ] = np.array(tools.quads2triangles([[0,1,2,3]]),dtype=np.uint32)
   
-  tools.chooseColoring(mode=color,textureColoring=textureColoring)(data)
+  tools.chooseColoring(mode=color,textureColoring=textureColoring)(data,hex = hex)
 
   tools.dataToNumpyArray(data)
   return data

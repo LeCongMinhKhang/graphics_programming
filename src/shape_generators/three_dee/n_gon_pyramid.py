@@ -11,6 +11,7 @@ def generate(
   base: float = 1.0,
   height: float = 2.0,
   color: str = "position",
+  hex = 0xff69ff,
   **kwargs,
 ):
   shape_type = str(shape_type)
@@ -54,7 +55,7 @@ def generate(
   tools.dataToNumpyArray(data)
 
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color, textureColoring=textureColoring)(data)
+  tools.chooseColoring(color, textureColoring=textureColoring)(data, hex = hex)
   tools.dataToNumpyArray(data)
 
   return data

@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 def generate(size:  float = 1.0, 
              n:     int   = 12, 
              color: str   = "normal",
+             hex = 0xff69ff,
              **kwargs):
   size  = float(size) 
   n     = int(n)   
@@ -63,7 +64,7 @@ def generate(size:  float = 1.0,
   data["indices" ] = indices
 
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color,textureColoring=textureColoring)(data,latNum=n,numOfVertPerLatRing=numOfVertPerLatRing)
+  tools.chooseColoring(color,textureColoring=textureColoring)(data, hex = hex,latNum=n,numOfVertPerLatRing=numOfVertPerLatRing)
   tools.dataToNumpyArray(data)
   return data
 

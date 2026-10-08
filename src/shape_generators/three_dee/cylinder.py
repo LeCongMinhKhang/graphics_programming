@@ -8,6 +8,7 @@ def generate(top_mult:  float = 1.0,
              radius:    float = 1.0,
              height:    float = 1.0,
              color:     str   = "position",
+             hex = 0xff69ff,
              **kwargs):
   top_mult = float(top_mult)
   n        = int(n)  
@@ -45,7 +46,7 @@ def generate(top_mult:  float = 1.0,
   tools.dataToNumpyArray(data)
   
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color,textureColoring=textureColoring)(data,height = height, radius = radius)
+  tools.chooseColoring(color,textureColoring=textureColoring)(data,hex = hex,height = height, radius = radius)
   tools.dataToNumpyArray(data)
   
   return data

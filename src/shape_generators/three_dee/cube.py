@@ -5,6 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 def generate(size:  float = 1.0,
              color: str   = "position",
+             hex = 0xff69ff,
              **kwargs):
   size  = float(size)
   color = str(color)  
@@ -34,7 +35,7 @@ def generate(size:  float = 1.0,
 
   data["indices"] = tools.quads2triangles(listOfQuads)
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color,textureColoring=textureColoring)(data)
+  tools.chooseColoring(color,textureColoring=textureColoring)(data, hex = hex)
   tools.dataToNumpyArray(data)
   
   return data

@@ -9,6 +9,7 @@ def generate(thickness: float = 1.0,
              hole_size: float = 1.0,
              n:         int   = 8, 
              color:     str   = "normal",
+             hex = 0xff69ff,
              **kwargs):
   thickness = float(thickness) 
   hole_size = float(hole_size) 
@@ -40,7 +41,7 @@ def generate(thickness: float = 1.0,
       listOfQuads.append([index(i+1,j),index(i+1,j+1),index(i,j+1),index(i,j)])
   data["indices"] = tools.quads2triangles(listOfQuads)
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color,textureColoring=textureColoring)(data,ringCount=ringCount,vertPerRing=n)
+  tools.chooseColoring(color,textureColoring=textureColoring)(data, hex = hex,ringCount=ringCount,vertPerRing=n)
   tools.dataToNumpyArray(data)
   
   return data
