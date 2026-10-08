@@ -86,7 +86,7 @@ class App(tk.Tk):
     self.table.grid(row=0, column=0, sticky="nsew")
     self.table.grid_columnconfigure(index=(0, 1, 2), weight=1)
     self.table.newRow(
-      self.table.label(text="Control Panel"), self.table.none(), self.table.button(text="Apply")
+      self.table.label(text="Control Panel"), self.table.none(), self.table.none()
     )
     # scene type
     self.table.newRow(
@@ -96,10 +96,16 @@ class App(tk.Tk):
         values=sorted(["file"] + list(all_scenes.keys())),
         # default=17,
         state="readonly",
-        command=self.change_scene,
+        command=self.select_scene,
       ),
+    )
+    self.table.newRow(
+      self.table.label(text="File Path:", id = "filePathLabel"),
       self.table.entry(id="filePath"),
     )
+    self.table.get(id="filePath").bind("<Return>",lambda event: self.change_scene("file"))
+    self.table.get(id="filePathLabel").config(text = "",padding= (0,Ste.PAD.value))
+    self.table.get(id="filePath").grid_remove()
 
     # lighting
     self.table.newRow(
@@ -172,8 +178,23 @@ class App(tk.Tk):
     self.viewport.update_lights(self.nb_lights_var.get())
     logger.debug("%d lights total", self.nb_lights_var.get())
 
-  def change_scene(self, event):
+  def showHideFilePathField(self, show = False):
+    if show:
+      self.table.get(id = "filePath").grid()
+    else:
+      self.table.get(id = "filePath").grid_remove()
+  def select_scene(self, event):
     value = event.widget.get()
+    if value == "file":
+      
+      self.table.get(id="filePathLabel").config(text = "File path:")
+      self.showHideFilePathField(show = True)
+    else:
+      self.table.get(id="filePathLabel").config(text = "")
+      self.showHideFilePathField(show = False)
+      self.change_scene(value)
+
+  def change_scene(self, value):
     logger.debug("%s scene selected.", value)
     self.update_widgets(self.viewport.set_scene(value, self.table.get(id="filePath").get()))
 
