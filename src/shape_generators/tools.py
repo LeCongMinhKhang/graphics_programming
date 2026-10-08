@@ -9,6 +9,7 @@ def dataStructure():
   return {
     "vertices": [],          # : np.array((n, 3))
     "indices": [],           # (optional): np.array((n)) if ommited, will be picking k-tuples from the vertices array where k is the size of primitive (eg 3 for triangles)
+    "uvs": [],
     "colors": [],            # : np.array((n, 3)) each component must be in [0, 1]
     "normals": [],           # : np.array((n, 3))
     "mode": GL.GL_TRIANGLES  # : GL mode, indicating the rendering mode (eg: GL\_TRIANGLES, GL\_TRIANGL_STRIP, ...)
@@ -16,6 +17,7 @@ def dataStructure():
 def dataToNumpyArray(data):
   if not isinstance(data["vertices"],np.ndarray): data["vertices"] = np.array(data["vertices"], dtype=np.float32)
   if not isinstance(data["indices" ],np.ndarray): data["indices" ] = np.array(data["indices" ], dtype=np.uint32 ) 
+  if not isinstance(data["uvs"     ],np.ndarray): data["uvs"     ] = np.array(data["uvs"     ], dtype=np.float32)
   if not isinstance(data["colors"  ],np.ndarray): data["colors"  ] = np.array(data["colors"  ], dtype=np.float32)
   if not isinstance(data["normals" ],np.ndarray): data["normals" ] = np.array(data["normals" ], dtype=np.float32)
 

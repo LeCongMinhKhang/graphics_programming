@@ -49,7 +49,7 @@ def parseFile(path):
 
             if verticesIndex is None:
               data["vertices"].append(obj["v" ][parsed[i][0]] if parsed[i][0] is not None else vNone)
-              data["colors"  ].append(obj["vt"][parsed[i][1]]) if len(parsed[i]) > 1 and parsed[i][1] is not None else None
+              data["uvs"     ].append(obj["vt"][parsed[i][1]]) if len(parsed[i]) > 1 and parsed[i][1] is not None else None
               data["normals" ].append(obj["vn"][parsed[i][2]]) if len(parsed[i]) > 2 and parsed[i][2] is not None else None
 
               tripletHashmap[keys[i]] = verticesCount
