@@ -98,7 +98,7 @@ class App(tk.Tk):
         state="readonly",
         command=self.change_scene,
       ),
-      self.table.entry(id="filePath")
+      self.table.entry(id="filePath"),
     )
 
     # lighting
@@ -269,11 +269,12 @@ class AppOgl(OpenGLFrame):
     self.mouse = {
       "x": 0.0,
       "y": 0.0,
-      "mb1_x": 0.0,
-      "mb1_y": 0.0,  # current position (GL coords, y-up)
-      "mb1_down_x": 0.0,
-      "mb1_down_y": 0.0,  # position at last press
+      "mb_x": 0.0,
+      "mb_y": 0.0,  # current position (GL coords, y-up)
+      "mb_press_x": 0.0,
+      "mb_press_y": 0.0,  # position at last press
       "mb1_down": False,
+      "mb2_down": False,
       "scroll_x": 0.0,
       "scroll_y": 0.0,
       "scroll_delta_x": 0.0,
@@ -310,6 +311,8 @@ class AppOgl(OpenGLFrame):
     self.bind("<Motion>", self.on_drag)
     self.bind("<Button-1>", self.on_mouse)
     self.bind("<ButtonRelease-1>", self.on_mouse)
+    self.bind("<Button-3>", self.on_mouse)  # on linux mb2
+    self.bind("<ButtonRelease-3>", self.on_mouse)  # on linux mb2
     match sys.platform:
       case "win32" | "darwin":
         self.bind("<MouseWheel>", self.on_mouse)
@@ -325,39 +328,46 @@ class AppOgl(OpenGLFrame):
     self.cursor_pos_callback(event.x, event.y)
 
   def on_mouse(self, event):
-    match event.type:
-      case tk.EventType.ButtonPress:
-        match event.num:
-          case 1:
-            self.mouse_button_callback("press")
-          case 4:
-            self.scroll_callback(0, 5)
-          case 5:
-            self.scroll_callback(0, -5)
-          case _:
-            logger.debug("no button action registered")
-      case tk.EventType.ButtonRelease:
-        self.mouse_button_callback("release")
-      case tk.EventType.MouseWheel:
-        self.scroll_callback(0, event.delta / 10)
+    match event.num:
+      case 1:
+        self.mb1_callback(event.type)
+      case 3:
+        self.mb2_callback(event.type)
+      case 4:
+        self.scroll_callback(0, 5)
+      case 5:
+        self.scroll_callback(0, -5)
+      case _:
+        logger.debug("no button action registered")
 
   def cursor_pos_callback(self, xpos, ypos):
     height = self.winfo_height()
     self.mouse["x"] = xpos
     self.mouse["y"] = height - ypos
-    if self.mouse["mb1_down"]:  # update mb1 position only when mb1 is pressed
-      self.mouse["mb1_x"] = xpos
-      self.mouse["mb1_y"] = int(height) - ypos  # flip so y=0 is bottom
+    # update mb position only when a button is pressed
+    if self.mouse["mb1_down"] or self.mouse["mb2_down"]:
+      self.mouse["mb_x"] = xpos
+      self.mouse["mb_y"] = int(height) - ypos  # flip so y=0 is bottom
 
-  def mouse_button_callback(self, action):
-    if action == "press":
+  def mb1_callback(self, action):
+    if action == tk.EventType.ButtonPress:
       self.mouse["mb1_down"] = True
-      self.mouse["mb1_down_x"] = self.mouse["x"]
-      self.mouse["mb1_down_y"] = self.mouse["y"]
-      self.mouse["mb1_x"] = self.mouse["x"]
-      self.mouse["mb1_y"] = self.mouse["y"]
-    elif action == "release":
+      self.mouse["mb_press_x"] = self.mouse["x"]
+      self.mouse["mb_press_y"] = self.mouse["y"]
+      self.mouse["mb_x"] = self.mouse["x"]
+      self.mouse["mb_y"] = self.mouse["y"]
+    elif action == tk.EventType.ButtonRelease:
       self.mouse["mb1_down"] = False
+
+  def mb2_callback(self, action):
+    if action == tk.EventType.ButtonPress:
+      self.mouse["mb2_down"] = True
+      self.mouse["mb_press_x"] = self.mouse["x"]
+      self.mouse["mb_press_y"] = self.mouse["y"]
+      self.mouse["mb_x"] = self.mouse["x"]
+      self.mouse["mb_y"] = self.mouse["y"]
+    elif action == tk.EventType.ButtonRelease:
+      self.mouse["mb2_down"] = False
 
   def scroll_callback(self, xoffset, yoffset):
     self.mouse["scroll_x"] += xoffset
@@ -374,9 +384,7 @@ class AppOgl(OpenGLFrame):
     GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
 
     GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
-    GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
-    logger.debug("Wireframe mode disabled.")
-    
+    GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)  # wireframe disabled
 
   def update_lights(self, nb_lights, uniforms=None):
     self.nb_lights = nb_lights
@@ -395,7 +403,7 @@ class AppOgl(OpenGLFrame):
               10,
             ),
             color=(1, 1, 1),
-            intensity=1/(i+1),
+            intensity=1 / (i + 1),
           )
           for i in range(self.nb_lights)
         ]
@@ -451,18 +459,23 @@ class AppOgl(OpenGLFrame):
     )
     logger.debug("%s program created", name)
 
-  def set_scene(self, name, filePath = None):
+  def set_scene(self, name, filePath=None):
     self.free_all_objects()
     scene = self.scenes.get(name if filePath is not None else filePath)
     if scene is None and name != "file":
       logger.error('no scene name corresponding to "%s"', name)
       exit(1)
-    if scene is None and name == "file":
-      self.reserve_object("file",filePath)
-    scene.build_scene()
-    return scene.program_name
 
-  def create_object(self, obj_name, filePath = None):
+    program_name = ""
+    if scene is None and name == "file":
+      self.reserve_object("file", filePath)
+      program_name = "interpolation"
+    else:
+      scene.build_scene()
+      program_name = scene.program_name
+    return program_name
+
+  def create_object(self, obj_name, filePath=None):
     obj = {}
     obj_program_name = "interpolation"
     match obj_name:
@@ -552,6 +565,9 @@ class AppOgl(OpenGLFrame):
       return
     self.objects_rendered.remove(entry[1][entry[0] - 1])
     self.objects[obj_name][0] -= 1
+    if obj_name == "file":
+      self.pipeline.free_object(self.objects["file"][1][-1])
+      self.objects["file"][1].pop()
 
   def free_object_category(self, obj_name):
     entry = self.objects.get(obj_name)
@@ -565,12 +581,12 @@ class AppOgl(OpenGLFrame):
     for name in self.objects.keys():
       self.free_object_category(name)
 
-  def reserve_object(self, obj_name, filePath = None):
-    entry = self.objects.get(obj_name if obj_name != "file" else filePath)
+  def reserve_object(self, obj_name, filePath=None):
+    entry = self.objects.get(obj_name)
     obj_program_name = ""
     # if there is no more objects to reserve, create a new one
     if (entry is None) or (entry[0] >= len(entry[1])):
-      _, obj_program_name = self.create_object(obj_name,filePath)
+      _, obj_program_name = self.create_object(obj_name, filePath)
       self.objects[obj_name][0] += 1
     else:
       obj_program_name = self.get_program_name(entry[1][entry[0] - 1])
@@ -611,10 +627,10 @@ class AppOgl(OpenGLFrame):
               "name": "iMouse",
               "value": np.array(
                 [
-                  self.mouse["mb1_x"],
-                  self.mouse["mb1_y"],
-                  self.mouse["mb1_down_x"],
-                  self.mouse["mb1_down_y"],
+                  self.mouse["mb_x"],
+                  self.mouse["mb_y"],
+                  self.mouse["mb_press_x"],
+                  self.mouse["mb_press_y"],
                 ],
                 dtype=np.float32,
               ),
