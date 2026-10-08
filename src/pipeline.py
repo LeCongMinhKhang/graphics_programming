@@ -286,6 +286,10 @@ class Pipeline:
       for idx in to_draw:
         draw_object(self.objects[idx])
 
+  def free_object(self, obj_id):
+    self.objects[obj_id]["vao"].destroy()
+    self.objects.pop(obj_id)
+
   def destroy(self):
     for obj in self.objects:
       obj["vao"].destroy()
