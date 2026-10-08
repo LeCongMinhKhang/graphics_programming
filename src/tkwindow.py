@@ -96,7 +96,7 @@ class App(tk.Tk):
         state="readonly",
         command=self.change_scene,
       ),
-      self.table.entry(id="filePath")
+      self.table.entry(id="filePath"),
     )
 
     # lighting
@@ -374,7 +374,6 @@ class AppOgl(OpenGLFrame):
     GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
     GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
     logger.debug("Wireframe mode disabled.")
-    
 
   def update_lights(self, nb_lights, uniforms=None):
     self.nb_lights = nb_lights
@@ -393,7 +392,7 @@ class AppOgl(OpenGLFrame):
               10,
             ),
             color=(1, 1, 1),
-            intensity=1/(i+1),
+            intensity=1 / (i + 1),
           )
           for i in range(self.nb_lights)
         ]
@@ -449,18 +448,23 @@ class AppOgl(OpenGLFrame):
     )
     logger.debug("%s program created", name)
 
-  def set_scene(self, name, filePath = None):
+  def set_scene(self, name, filePath=None):
     self.free_all_objects()
     scene = self.scenes.get(name if filePath is not None else filePath)
     if scene is None and name != "file":
       logger.error('no scene name corresponding to "%s"', name)
       exit(1)
-    if scene is None and name == "file":
-      self.reserve_object("file",filePath)
-    scene.build_scene()
-    return scene.program_name
 
-  def create_object(self, obj_name, filePath = None):
+    program_name = ""
+    if scene is None and name == "file":
+      self.reserve_object("file", filePath)
+      program_name = "interpolation"
+    else:
+      scene.build_scene()
+      program_name = scene.program_name
+    return program_name
+
+  def create_object(self, obj_name, filePath=None):
     obj = {}
     obj_program_name = "interpolation"
     match obj_name:
@@ -550,6 +554,9 @@ class AppOgl(OpenGLFrame):
       return
     self.objects_rendered.remove(entry[1][entry[0] - 1])
     self.objects[obj_name][0] -= 1
+    if obj_name == "file":
+      self.pipeline.free_object(self.objects["file"][1][-1])
+      self.objects["file"][1].pop()
 
   def free_object_category(self, obj_name):
     entry = self.objects.get(obj_name)
@@ -563,12 +570,12 @@ class AppOgl(OpenGLFrame):
     for name in self.objects.keys():
       self.free_object_category(name)
 
-  def reserve_object(self, obj_name, filePath = None):
-    entry = self.objects.get(obj_name if obj_name != "file" else filePath)
+  def reserve_object(self, obj_name, filePath=None):
+    entry = self.objects.get(obj_name)
     obj_program_name = ""
     # if there is no more objects to reserve, create a new one
     if (entry is None) or (entry[0] >= len(entry[1])):
-      _, obj_program_name = self.create_object(obj_name,filePath)
+      _, obj_program_name = self.create_object(obj_name, filePath)
       self.objects[obj_name][0] += 1
     else:
       obj_program_name = self.get_program_name(entry[1][entry[0] - 1])
