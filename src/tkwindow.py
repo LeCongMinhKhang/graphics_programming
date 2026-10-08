@@ -316,6 +316,7 @@ class AppOgl(OpenGLFrame):
     match sys.platform:
       case "win32" | "darwin":
         self.bind("<MouseWheel>", self.on_mouse)
+        logger.debug("Bound mousewheel on Windows platform")
       case "linux":
         self.bind("<Button-4>", self.on_mouse)
         self.bind("<Button-5>", self.on_mouse)
@@ -328,17 +329,20 @@ class AppOgl(OpenGLFrame):
     self.cursor_pos_callback(event.x, event.y)
 
   def on_mouse(self, event):
-    match event.num:
-      case 1:
-        self.mb1_callback(event.type)
-      case 3:
-        self.mb2_callback(event.type)
-      case 4:
-        self.scroll_callback(0, 5)
-      case 5:
-        self.scroll_callback(0, -5)
-      case _:
-        logger.debug("no button action registered")
+    if event.type == tk.EventType.MouseWheel:
+      self.scroll_callback(0, 5 * np.sign(event.delta))
+    else:
+      match event.num:
+        case 1:
+          self.mb1_callback(event.type)
+        case 3:
+          self.mb2_callback(event.type)
+        case 4:
+          self.scroll_callback(0, 5)
+        case 5:
+          self.scroll_callback(0, -5)
+        case _:
+          logger.debug(f"no button action registered for: {event.type}, {event.num}")
 
   def cursor_pos_callback(self, xpos, ypos):
     height = self.winfo_height()
