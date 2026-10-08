@@ -45,19 +45,23 @@ class ScrollableList(ttk.Frame):
     # scrollable canvas stuff ###############################
     self.canvas = tk.Canvas(self,width=0,height=0)
     self.canvas.grid(row=0,column=0,sticky="nsew")
-    self.canvas.grid_rowconfigure(index=0,weight=1)
-    self.canvas.grid_columnconfigure(index=0,weight=1)
+    # self.canvas.grid_rowconfigure(index=0,weight=1)
+    # self.canvas.grid_columnconfigure(index=0,weight=1)
     self.scrollbar = tk.Scrollbar(self, orient="vertical", command=lambda *args : self.canvas.yview(*args) or self.setBottom())
     self.scrollbar.grid(row=0,column=1,sticky="nsew")
     self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
     self.frame = ttk.Frame(self.canvas)
-    self.frame.grid(row = 0,column = 0,sticky="nsew")
-    self.frame.grid_columnconfigure(index=0,weight=1)
-    self.canvas.create_window((0, 0), window=self.frame, anchor= "nw")
+    
+    
+    self.frame.grid(row = 0,column = 0)
+    self.frame.grid_columnconfigure(index=(0,),weight=1)
+    self.window = self.canvas.create_window((0, 0), window=self.frame, anchor= "nw")
+    excess = 20*Ste.PAD.value
+    self.bind("<Configure>", func = lambda event: self.canvas.itemconfig(self.window,width = event.width - excess))
     self.frame.bind("<Configure>",lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")) or (self.canvas.yview_moveto(1.0) if self.tryBottom and stickToBottom else False))
     self.canvas.bind("<MouseWheel>", lambda e: self.canvas.yview_scroll(int(- e.delta/10),what="unit") if self.canvas.yview()[1] != 1.0 else None)
     # end scrollable canvas stuff ###############################
-
 
     self.frameframe = ttk.Frame(self.frame)
     self.frameframe.grid(row=0,column=0,sticky="nsew")

@@ -88,7 +88,8 @@ def normalColoring(data, **kwargs):
   return data
 
 def positionalColoring(data, **kwargs):
-  data["colors"] = (data["vertices"] - np.min(data["vertices"], axis=0)) / (np.max(data["vertices"], axis=0) - np.min(data["vertices"], axis=0))
+  vertices = data["vertices"] if (np.max(data["vertices"], axis=0) - np.min(data["vertices"], axis=0))[2] != 0 else data["vertices"][:, :2]
+  data["colors"] = (vertices - np.min(vertices, axis=0)) / (np.max(vertices, axis=0) - np.min(vertices, axis=0))
 
   return data
 

@@ -45,12 +45,14 @@ class App(tk.Tk):
   def __init__(self, data=[], window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
     super().__init__()
     self.title("Graphics")
-    self.resizable(True, False)
+    self.resizable(True, True)
     w, h = window_size[0] + 500, window_size[1]
     x = (self.winfo_screenwidth() - w) // 2
     y = (self.winfo_screenheight() - h) // 2
     self.geometry(f"{w}x{h}+{x}+{y}")  # centers the window
     self.minsize(window_size[0], window_size[1])
+
+
     self.grid_columnconfigure(index=(0), minsize=window_size[0])
     self.grid_columnconfigure(index=(1), weight=1)
     self.diagnostics = Diagnostics(self)
@@ -78,7 +80,7 @@ class App(tk.Tk):
     # UI definition
     self.sidebar = ScrollableList(self)
     self.sidebar.grid(row=0, column=1, sticky="nsew")
-    self.sidebar.frameframe.grid_columnconfigure(index=0, weight=1)
+    self.sidebar.frameframe.grid_columnconfigure(index=(0,), weight=1)
 
     self.table = Tablerone(self.sidebar.frameframe, col=3)
     self.table.grid(row=0, column=0, sticky="nsew")

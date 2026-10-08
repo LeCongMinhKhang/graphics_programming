@@ -67,7 +67,8 @@ def parseFile(path):
           continue
   tools.dataToNumpyArray(data)
   tools.vertexNeighborNormals(data) if data["normals"].size == 0 else None
-  tools.normalColoring(data) if data["colors"].size == 0 else None
+  # temp override default texture mapping of colors      vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+  tools.normalColoring(data) if data["colors"].size == 0 or data["colors"].shape[1] != 3 else None
   tools.dataToNumpyArray(data)
   return data
 
