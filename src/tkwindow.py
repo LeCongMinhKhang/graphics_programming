@@ -82,11 +82,11 @@ class App(tk.Tk):
     self.sidebar.grid(row=0, column=1, sticky="nsew")
     self.sidebar.frameframe.grid_columnconfigure(index=(0,), weight=1)
 
-    self.table = Tablerone(self.sidebar.frameframe, col=3)
+    self.table = Tablerone(self.sidebar.frameframe, col=2)
     self.table.grid(row=0, column=0, sticky="nsew")
-    self.table.grid_columnconfigure(index=(0, 1, 2), weight=1)
+    self.table.grid_columnconfigure(index=(0, 1), weight=1)
     self.table.newRow(
-      self.table.label(text="Control Panel"), self.table.none(), self.table.none()
+      self.table.label(text="Control Panel"), self.table.none()
     )
     # scene type
     self.table.newRow(
