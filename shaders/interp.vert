@@ -2,17 +2,20 @@
 
 layout(location = 0) in vec3 position; // vertex position (object space)
 layout(location = 1) in vec3 color; // vertex color (no lighting)
+layout(location = 2) in vec2 uv; // uv coordinates
 
 uniform mat4 projection, view, model; // space transformation matrices
 uniform float iRotation; // rotation period, if 0 then no movement
 uniform float iTime; // seconds
 
 out vec3 fragment_color; // vertex color
+out vec2 fragment_tex_coord; // texture coordinates
 
 #define PI 3.14159265358979323846
 
 void main() {
     fragment_color = color;
+    fragment_tex_coord = uv;
 
     // rotation
     mat4 rot;
