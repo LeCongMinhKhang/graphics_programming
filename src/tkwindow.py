@@ -45,13 +45,12 @@ class App(tk.Tk):
   def __init__(self, data=[], window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
     super().__init__()
     self.title("Graphics")
-    self.resizable(True, True)
+    self.resizable(True, False)
     w, h = window_size[0] + 500, window_size[1]
     x = (self.winfo_screenwidth() - w) // 2
     y = (self.winfo_screenheight() - h) // 2
     self.geometry(f"{w}x{h}+{x}+{y}")  # centers the window
     self.minsize(window_size[0], window_size[1])
-
 
     self.grid_columnconfigure(index=(0), minsize=window_size[0])
     self.grid_columnconfigure(index=(1), weight=1)
@@ -74,6 +73,7 @@ class App(tk.Tk):
     # options
     self.lighting_var = tk.StringVar()
     self.wireframe_var = tk.BooleanVar()
+    self.texture_var = tk.BooleanVar()
     self.rotation_var = tk.DoubleVar()
     self.nb_lights_var = tk.IntVar()
 
@@ -85,9 +85,7 @@ class App(tk.Tk):
     self.table = Tablerone(self.sidebar.frameframe, col=2)
     self.table.grid(row=0, column=0, sticky="nsew")
     self.table.grid_columnconfigure(index=(0, 1), weight=1)
-    self.table.newRow(
-      self.table.label(text="Control Panel"), self.table.none()
-    )
+    self.table.newRow(self.table.label(text="Control Panel"), self.table.none())
     # scene type
     self.table.newRow(
       self.table.label(text="Displaying:"),
@@ -100,11 +98,11 @@ class App(tk.Tk):
       ),
     )
     self.table.newRow(
-      self.table.label(text="File Path:", id = "filePathLabel"),
+      self.table.label(text="File Path:", id="filePathLabel"),
       self.table.entry(id="filePath"),
     )
-    self.table.get(id="filePath").bind("<Return>",lambda event: self.change_scene("file"))
-    self.table.get(id="filePathLabel").config(text = "",padding= (0,Ste.PAD.value))
+    self.table.get(id="filePath").bind("<Return>", lambda event: self.change_scene("file"))
+    self.table.get(id="filePathLabel").config(text="", padding=(0, Ste.PAD.value))
     self.table.get(id="filePath").grid_remove()
 
     # lighting
@@ -135,7 +133,13 @@ class App(tk.Tk):
     self.table.newRow(
       self.table.label(text="Wireframe"),
       self.table.checkButton(
-        id="wireframe", command=self.change_wireframe, variable=self.wireframe_var
+        id="wireframe", command=self.change_wireframe, variable=self.wireframe_var, default=False
+      ),
+    )
+    self.table.newRow(
+      self.table.label(text="Texture"),
+      self.table.checkButton(
+        id="texture", command=self.change_color_mode, variable=self.texture_var, default=False
       ),
     )
     self.table.newRow(
@@ -174,29 +178,36 @@ class App(tk.Tk):
       GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
       logger.debug("Wireframe mode disabled.")
 
+  def change_color_mode(self):
+    color_mode = "texture" if self.texture_var.get() else "color"
+    logger.debug("coloring with %s mode selected", "texture" if self.texture_var.get() else "color")
+    self.viewport.select_color_mode(color_mode)
+
   def change_nb_lights(self):
     self.viewport.update_lights(self.nb_lights_var.get())
+    self.viewport.update_static_uniforms(update_lights=True)
     logger.debug("%d lights total", self.nb_lights_var.get())
 
-  def showHideFilePathField(self, show = False):
+  def showHideFilePathField(self, show=False):
     if show:
-      self.table.get(id = "filePath").grid()
+      self.table.get(id="filePath").grid()
     else:
-      self.table.get(id = "filePath").grid_remove()
+      self.table.get(id="filePath").grid_remove()
+
   def select_scene(self, event):
     value = event.widget.get()
     if value == "file":
-      
-      self.table.get(id="filePathLabel").config(text = "File path:")
-      self.showHideFilePathField(show = True)
+      self.table.get(id="filePathLabel").config(text="File path:")
+      self.showHideFilePathField(show=True)
     else:
-      self.table.get(id="filePathLabel").config(text = "")
-      self.showHideFilePathField(show = False)
+      self.table.get(id="filePathLabel").config(text="")
+      self.showHideFilePathField(show=False)
       self.change_scene(value)
 
   def change_scene(self, value):
     logger.debug("%s scene selected.", value)
-    self.update_widgets(self.viewport.set_scene(value, self.table.get(id="filePath").get()))
+    args = self.viewport.set_scene(value, self.table.get(id="filePath").get())
+    self.update_widgets(*args)
 
   def change_lighting(self, event):
     value = event.widget.get()
@@ -212,9 +223,14 @@ class App(tk.Tk):
     # logger.debug("rotation period set to %s s (if 0 then disabled)", rotation)
     self.viewport.set_rotation_period(rotation)
 
-  def update_widgets(self, lighting=None):
+  def update_widgets(self, lighting=None, color_mode=None):
     if lighting is not None:
       self.lighting_var.set(lighting)
+    if color_mode is not None:
+      if color_mode == "texture":
+        self.texture_var.set(True)
+      if color_mode == "color":
+        self.texture_var.set(False)
 
 
 class Diagnostics(ttk.Frame):
@@ -460,6 +476,15 @@ class AppOgl(OpenGLFrame):
       if self.programs[name] == -1:
         self.create_program(name)  # updates self.programs[name]
       self.update_object(idx, program_id=self.programs[name])
+    self.update_static_uniforms(update_lights=True)
+
+  def select_color_mode(self, color_mode):
+    if color_mode not in ("texture", "color"):
+      logger.error('color_mode must be "texture" or "color"')
+      exit(1)
+    for obj_id in self.objects_rendered:
+      self.update_object(obj_id, color_mode=color_mode)
+    self.update_static_uniforms()
 
   def create_program(self, name: str):
     program_id = self.programs[name]
@@ -484,6 +509,11 @@ class AppOgl(OpenGLFrame):
     )
     logger.debug("%s program created", name)
 
+  def update_static_uniforms(self, update_lights=False):
+    additional_uniforms = self.light_uniforms if update_lights else np.array([])
+    for obj_id in self.objects_rendered:
+      self.pipeline.upload_static_uniforms(obj_id, additional_uniforms)
+
   def set_scene(self, name, filePath=None):
     self.free_all_objects()
     scene = self.scenes.get(name if filePath is not None else filePath)
@@ -492,13 +522,18 @@ class AppOgl(OpenGLFrame):
       exit(1)
 
     program_name = ""
+    color_mode = ""
     if scene is None and name == "file":
       self.reserve_object("file", filePath)
-      program_name = "interpolation"
+      program_name = "interpolation"  # default shader program for obj files
+      color_mode = "texture"  # default coloring mode for obj files
     else:
       scene.build_scene()
       program_name = scene.program_name
-    return program_name
+      color_mode = scene.color_mode
+
+    self.update_static_uniforms()
+    return program_name, color_mode
 
   def create_object(self, obj_name, filePath=None):
     obj = {}
@@ -564,9 +599,12 @@ class AppOgl(OpenGLFrame):
       vertices=obj.get("vertices"),
       normals=obj.get("normals"),
       colors=obj.get("colors"),
+      uvs=obj.get("uvs"),
+      color_mode=obj.get("color_mode", "color"),
       program_id=obj.get("program_id"),
       indices=obj.get("indices"),
       mode=obj.get("gl_mode"),
+      textures=obj.get("textures"),
       specific_static_uniforms=np.concatenate(
         (
           self.default_static_uniforms,
@@ -593,6 +631,7 @@ class AppOgl(OpenGLFrame):
     if obj_name == "file":
       self.pipeline.free_object(self.objects["file"][1][-1])
       self.objects["file"][1].pop()
+      logger.debug("deleting file import object")
 
   def free_object_category(self, obj_name):
     entry = self.objects.get(obj_name)
@@ -663,13 +702,12 @@ class AppOgl(OpenGLFrame):
             },
           ]
         ),
-        self.light_uniforms,
+        # self.light_uniforms,
       )
     )
     uniforms = self.cam.update(
       uniforms=np.concatenate((self.default_static_uniforms, uniforms)), mouse=self.mouse
     )
-
     self.pipeline.draw(uniforms=uniforms, to_draw=self.objects_rendered)
 
 

@@ -91,5 +91,7 @@ Consider making a class allowing the objects to move within the scene by modifyi
 
 Same discussion with lights
 
+Textures:
+isTextured is never uploaded for "file" scenes
 ## TODO: 
 Cache uniform locations. glGetUniformLocation with string formatting every frame is slow in Python. Build a dict of locations once after linking the program

@@ -44,11 +44,23 @@ class Tablerone(ttk.Frame):
       spinbox.set(default)
     return spinbox
 
-  def checkButton(self, /, id=None, **kwargs):
-    button = ttk.Checkbutton(self, **kwargs)
+  def checkButton(self, /, id=None, default=None, **kwargs):
+    var = kwargs.pop("variable", None) or tk.BooleanVar(master=self)
+    button = ttk.Checkbutton(self, variable=var, **kwargs)
+    button.var = var  # keep a reference so it isn't garbage collected
     if id is not None:
       self.dict[id] = button
+    if default is not None:
+      var.set(default)
     return button
+
+  # def checkButton(self, /, id=None, default=None, **kwargs):
+  #   button = ttk.Checkbutton(self, **kwargs)
+  #   if id is not None:
+  #     self.dict[id] = button
+  #   if default is not None:
+  #     button.variable().set(default)
+  #   return button
 
   def slider(self, /, id=None, **kwargs):
     slider = ttk.Scale(self, **kwargs)
