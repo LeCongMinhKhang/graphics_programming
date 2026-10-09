@@ -535,9 +535,10 @@ class AppOgl(OpenGLFrame):
     self.update_static_uniforms()
     return program_name, color_mode
 
-  def create_object(self, obj_name, filePath=None):
+  def create_object(self, obj_name, filePath=None, data=None):
     obj = {}
     obj_program_name = "interpolation"
+    new_object_category = False
     match obj_name:
       case "file":
         obj = parseFile(filePath)
@@ -580,8 +581,14 @@ class AppOgl(OpenGLFrame):
       case "torus":
         obj = torus.generate(n=16)
       case _:
-        logger.error('no object name corresponding to "%s"', obj_name)
-        exit(1)
+        if data is None:
+          logger.error('trying to create object "%s" but no data given', obj_name)
+          exit(1)
+        obj = data
+        new_object_category = True
+
+    if not new_object_category and data is not None:
+      logger.warning('object name "%s" is already used by system, given data ignored', obj_name)
     self.create_program(obj_program_name)
     obj["program_id"] = self.programs[obj_program_name]
     obj_id = self.add_object(obj_name, obj)
@@ -645,12 +652,12 @@ class AppOgl(OpenGLFrame):
     for name in self.objects.keys():
       self.free_object_category(name)
 
-  def reserve_object(self, obj_name, filePath=None):
+  def reserve_object(self, obj_name, filePath=None, data=None):
     entry = self.objects.get(obj_name)
     obj_program_name = ""
     # if there is no more objects to reserve, create a new one
     if (entry is None) or (entry[0] >= len(entry[1])):
-      _, obj_program_name = self.create_object(obj_name, filePath)
+      _, obj_program_name = self.create_object(obj_name, filePath, data)
       self.objects[obj_name][0] += 1
     else:
       obj_program_name = self.get_program_name(entry[1][entry[0] - 1])

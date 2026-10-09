@@ -31,7 +31,12 @@ def scenes(gl_app: AppOgl):
       obj_id, _ = self.add_object(name)
       self.program_name = "interpolation"
       self.color_mode = "color"
-      self.update_object(obj_id, model_matrix=transform.identity(), program_name=self.program_name)
+      self.update_object(
+        obj_id,
+        model_matrix=transform.identity(),
+        program_name=self.program_name,
+        color_mode=self.color_mode,
+      )
 
     return build_scene
 

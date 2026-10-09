@@ -6,21 +6,20 @@ from types import MethodType
 
 
 def scenes(gl_app: AppOgl):
-  someoneSmarterWouldHaveWrittenAClosedFormedFormula = [
-    [ 2,],
-    [ 2, 6,],
-    [ 2, 6,10,],
-    [ 2, 6,10,14],
-    [ 2, 6,10,14,18],
-    [ 2, 6,10,14,18,22],
-    [ 2, 6,10,14,18,22,26],
-  ]
-  def aClosedFormedFormula(numE):
+
+  def electronicConfiguration(numE):
     tier = 0
     step = 0
-    max   = lambda: tier >> 1
-    limit = lambda: 2 + (max() - step) * 4
-    layer = lambda: ((tier+1)>>1) + step
+
+    def max():
+      return tier >> 1
+
+    def limit():
+      return 2 + (max() - step) * 4
+
+    def layer():
+      return ((tier + 1) >> 1) + step
+
     res = [0 for i in range(7)]
     while numE > 0:
       if limit() < 0:
@@ -34,7 +33,6 @@ def scenes(gl_app: AppOgl):
         res[layer()] += numE
         numE -= limit()
     return res
-      
 
   scenes = {}
   names = [
@@ -156,64 +154,42 @@ def scenes(gl_app: AppOgl):
     "116-Lv-Livermorium",
     "117-Ts-Tennessine",
     "118-Og-Oganesson",
-    ]
-  
-  def reserve_object(self, obj_name, func):
-    entry = self.gl_app.objects.get(obj_name)
-    obj_program_name = "interpolation"
-    # if there is no more objects to reserve, create a new one
-    if (entry is None) or (entry[0] >= len(entry[1])):
-      obj = func()
-      self.gl_app.create_program(obj_program_name)
-      obj["program_id"] = self.gl_app.programs[obj_program_name]
-      obj_id = self.gl_app.add_object(obj_name, obj)
-      self.gl_app.objects[obj_name][0] += 1
-    else:
-      obj_program_name = self.gl_app.get_program_name(entry[1][entry[0] - 1])
-      self.gl_app.objects[obj_name][0] += 1
+  ]
 
-    entry = self.gl_app.objects[obj_name]  # update the entry if object created
-    obj_id = entry[1][entry[0] - 1]
-    self.gl_app.objects_rendered.add(obj_id)
-    return obj_id
-  
   def make_build_scene(name):
-    [electron,symbol,name] = name.split("-")
+    [electron, symbol, name] = name.split("-")
     electron = int(electron)
+
     def build_scene(self):
       self.program_name = "interpolation"
       self.gl_app.create_program("interpolation")
-      configuration = aClosedFormedFormula(electron)
+      configuration = electronicConfiguration(electron)
+
       # core
-      obj = lambda: uv_sphere.generate(color = "hex", hex = 0xff0000)
-      coreId = reserve_object(self,"atomCore",obj)
-      self.update_object(
-        coreId, 
-        model_matrix=transform.identity(), 
-        program_name="interpolation"
-        )
+      obj = uv_sphere.generate(color="hex", hex=0xFF0000)
+      coreId, _ = self.add_object("atomCore", data=obj)
+      self.update_object(coreId, model_matrix=transform.identity(), program_name="interpolation")
+
       for i in range(len(configuration)):
         if configuration[i] == 0:
           continue
+
         # layer
-        obj = lambda: torus.generate(thickness=0.1, hole_size=2*(1+i)-0.05, color = "hex", hex = 0xffffff)
-        layerId = reserve_object(self,f"layer-{i}",obj)
-        self.update_object(
-          layerId,
-          model_matrix=transform.identity(), 
-          program_name="interpolation"
-          )
-        template = simple_ngonGenerator(configuration[i], 2*(1+i),0)
+        obj = torus.generate(thickness=0.1, hole_size=2 * (1 + i) - 0.05, color="hex", hex=0xFFFFFF)
+        layerId, _ = self.add_object(f"layer-{i}", data=obj)
+        self.update_object(layerId, model_matrix=transform.identity(), program_name="interpolation")
+        template = simple_ngonGenerator(configuration[i], 2 * (1 + i), 0)
+
+        # electrons
         for j in range(len(template)):
-          # electron
-          obj = lambda: uv_sphere.generate(n = 3, size=0.5, color = "hex", hex = 0x00fffff)
-          electronId = reserve_object(self,f"electron-{i}-{j}",obj)
+          obj = uv_sphere.generate(n=3, size=0.5, color="hex", hex=0x00FFFF)
+          electronId, _ = self.add_object("electron", data=obj)
           self.update_object(
-            electronId, 
-            model_matrix=transform.translate(template[j][0],template[j][1],0), 
-            program_name="interpolation"
-            )
-      
+            electronId,
+            model_matrix=transform.translate(template[j][0], template[j][1], 0),
+            program_name="interpolation",
+          )
+
     return build_scene
 
   for name in names:

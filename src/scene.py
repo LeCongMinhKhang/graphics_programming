@@ -8,9 +8,9 @@ class Scene:
     self.color_mode = ""
     self.gl_app = gl_app
 
-  def add_object(self, name, filePath=None):
+  def add_object(self, name, filePath=None, data=None):
     """Returns (obj_id, program_name)"""
-    return self.gl_app.reserve_object(name, filePath)
+    return self.gl_app.reserve_object(obj_name=name, filePath=filePath, data=data)
 
   def update_object(
     self,

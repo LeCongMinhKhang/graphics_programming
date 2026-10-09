@@ -336,13 +336,14 @@ class Pipeline:
       vao = obj["vao"]
       (shader, uma) = self.programs[obj["program_id"]]
       gl_mode = obj["gl_mode"]
-      # specific_uniforms = obj["uniforms"]
+      specific_uniforms = obj["uniforms"]
       indexing = obj["indexing"]
       vao.activate()  # bind VAO
       GL.glUseProgram(shader.render_idx)
       # upload non-static uniforms
-      # for uniform in np.concatenate((uniforms, np.array(specific_uniforms))):
-      for uniform in uniforms:
+      # specific_uniforms must be also updated for each object
+      for uniform in np.concatenate((uniforms, np.array(specific_uniforms))):
+        # for uniform in uniforms:
         if "transpose" in uniform.keys():
           uma.upload_uniform(
             uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]
