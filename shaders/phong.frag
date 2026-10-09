@@ -63,7 +63,7 @@ void main() {
     }
 
     // phong calculation
-    vec4 result = vec4(0., 0., 0., 1.);
+    vec4 result = vec4(1.);
     vec3 N = normalize(frag_normal);
     vec3 V = normalize(view_pos - frag_pos);
 
