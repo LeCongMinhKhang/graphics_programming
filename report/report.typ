@@ -131,7 +131,12 @@ Scenes are a collection of objects. The objects positions in the world are chang
 
 
 = Shape Generators
+#figure(
+  image("images/shapeGen.svg", width: 100%),
+  caption: [General shape generation flow],
+)
 == Data format
+
 We chose to bundle object data for rendering under the form:
 ```python
 data = {
