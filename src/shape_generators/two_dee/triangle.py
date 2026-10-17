@@ -32,7 +32,7 @@ def generate(size: float = 1.0, z: float = 0.0, color: str = "position", hex = 0
 
   tools.vertexNeighborNormals(data)
 
-  tools.chooseColoring(mode=color, textureColoring=textureColoring)(data, hex = hex)
+  tools.chooseColoring(mode=color)(data, hex = hex)
   tools.dataToNumpyArray(data)
   return data
 

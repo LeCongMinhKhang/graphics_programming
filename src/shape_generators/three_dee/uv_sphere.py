@@ -64,7 +64,7 @@ def generate(size:  float = 1.0,
   data["indices" ] = indices
 
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color,textureColoring=textureColoring)(data, hex = hex,latNum=n,numOfVertPerLatRing=numOfVertPerLatRing)
+  tools.chooseColoring(color)(data, hex = hex,latNum=n,numOfVertPerLatRing=numOfVertPerLatRing)
   tools.dataToNumpyArray(data)
   return data
 

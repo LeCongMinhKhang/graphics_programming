@@ -46,7 +46,7 @@ def generate(top_mult:  float = 1.0,
   tools.dataToNumpyArray(data)
   
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color,textureColoring=textureColoring)(data,hex = hex,height = height, radius = radius)
+  tools.chooseColoring(color)(data,hex = hex,height = height, radius = radius)
   tools.dataToNumpyArray(data)
   
   return data

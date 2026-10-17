@@ -55,7 +55,7 @@ def generate(
   tools.dataToNumpyArray(data)
 
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color, textureColoring=textureColoring)(data, hex = hex)
+  tools.chooseColoring(color)(data, hex = hex)
   tools.dataToNumpyArray(data)
 
   return data

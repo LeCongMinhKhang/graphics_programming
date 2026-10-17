@@ -29,7 +29,7 @@ def generate(n:           int   = 5,
 
   data["normals" ] = np.full((data["vertices"].shape[0],3),[0.0,0.0,1.0],dtype=np.float32)
 
-  tools.chooseColoring(mode=color,textureColoring=textureColoring)(data,hex=hex)
+  tools.chooseColoring(mode=color)(data,hex=hex)
 
   tools.dataToNumpyArray(data)
   return data

@@ -39,7 +39,7 @@ def generate(width_1: float = 1.0,
 
   data["indices" ] = np.array(tools.quads2triangles([[0,1,2,3]]),dtype=np.uint32)
   
-  tools.chooseColoring(mode=color,textureColoring=textureColoring)(data, hex=hex)
+  tools.chooseColoring(mode=color)(data, hex=hex)
 
   tools.dataToNumpyArray(data)
   return data
