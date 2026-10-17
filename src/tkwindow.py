@@ -319,6 +319,7 @@ class AppOgl(OpenGLFrame):
     }
     self.pipeline = Pipeline()
     self.programs = {
+      "unwrap": -1,
       "flat": -1,
       "interpolation": -1,
       "phong": -1,
@@ -422,9 +423,9 @@ class AppOgl(OpenGLFrame):
     GL.glDepthFunc(GL.GL_LESS)  # default; fragment passes if depth < stored depth
 
     GL.glFrontFace(GL.GL_CCW)  # winding order: counter clockwise indexing
-    GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
+    # GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
 
-    GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
+    # GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
     GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)  # wireframe disabled
 
   def update_lights(self, nb_lights, uniforms=None):
@@ -492,6 +493,9 @@ class AppOgl(OpenGLFrame):
       return
     logger.debug("---------- Adding new program (%s) ----------", name)
     match name:
+      case "unwrap":
+        vert_shader = "./shaders/unwrap.vert"
+        frag_shader = "./shaders/interp.frag"
       case "flat":
         vert_shader = "./shaders/flat.vert"
         frag_shader = "./shaders/flat.frag"

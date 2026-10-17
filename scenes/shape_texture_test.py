@@ -8,8 +8,8 @@ def scenes(gl_app: AppOgl):
   scenes = {}
 
   def build_scene(self):
-    self.program_name = "interpolation"
-    self.gl_app.create_program("interpolation")
+    self.program_name = "unwrap"
+    self.gl_app.create_program("unwrap")
     self.color_mode = "texture"
 
     obj = cube.generate()
@@ -17,7 +17,7 @@ def scenes(gl_app: AppOgl):
     objId, _ = self.add_object(name, data=obj)
     self.update_object(
       objId,
-      program_name="interpolation",
+      program_name="unwrap",
       textures={"image": "inputs/textures/test_texture.jpg"},
       color_mode="texture",
     )
