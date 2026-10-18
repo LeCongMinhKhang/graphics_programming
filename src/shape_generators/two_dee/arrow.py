@@ -55,10 +55,9 @@ def generate(length:  float = 1.0,
   data["normals" ] = np.full((data["vertices"].shape[0],3),[0.0,0.0,1.0],dtype=np.float32)
 
   tools.chooseColoring(mode=color)(data, hex = hex)
-
+  uvTexture(data)
   tools.dataToNumpyArray(data)
   return data
 
-def textureColoring(data):
-  data["colors"] = data["vertices"][:,:2] / np.max(data["vertices"][:,:2]) / 2 + 0.5
-  print(data["colors"])
+def uvTexture(data):
+  data["uvs"] = data["vertices"][:,:2] / np.max(data["vertices"][:,:2]) / 2 + 0.5

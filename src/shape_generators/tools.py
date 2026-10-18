@@ -60,7 +60,7 @@ def getUvSide(data,isTheSame,seamVertices,common):
       if out == set(): out = foundGroups
       else: out &=foundGroups
     if out != set(): break
-  return next(iter(out))
+  return list(out)[0]
 def uvSlicer(data,seams,debug = False):
   # there are a few groups of vertices with specific relation to the seam vertices
   # + add1 = vertices that connects to 2 of the seam's to form a face (unknown which side it is)
@@ -158,7 +158,6 @@ def uvSlicer(data,seams,debug = False):
   fullSeam = []
   seam2 = []
   plannedRedirection = {}
-  output = []
   isTheSame = {}
   for seam in seams:
     if seam["splits"] is None or len(seam["splits"]) == 0: continue
@@ -170,8 +169,8 @@ def uvSlicer(data,seams,debug = False):
     tearSplitsTear = [seam["tears"][0]]+seam["splits"]+[seam["tears"][1]]
     fullSeam += tearSplitsTear
     seam2  += [{tearSplitsTear[i],tearSplitsTear[i+1]} for i in range(len(tearSplitsTear)-1)]
-    # for t in seam["tears"]:
-      # if t is not None and debug: colors[t] = [0.0,0.0,1.0]
+    for t in seam["tears"]:
+      if t is not None and debug: colors[t] = [0.0,0.0,1.0]
 
 
   groups = []

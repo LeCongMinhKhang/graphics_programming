@@ -39,27 +39,9 @@ def generate(shape_type:  str   = "circle",
   data["normals" ] = np.full((data["vertices"].shape[0],3),[0.0,0.0,1.0],dtype=np.float32)
 
   tools.chooseColoring(mode=color)(data, hex=hex)
-
+  uvTexture(data)
   tools.dataToNumpyArray(data)
   return data
 
-def textureColoring(data):
-  data["colors"] = data["vertices"][:,:2] / np.max(data["vertices"][:,:2]) / 2 + 0.5
-  print(data["colors"])
-# def __circularish(n,size,w_multiplier,z):
-#   obj = {
-#     "v"  : [],
-#     "vt" : [],
-#     "vn" : [],
-#     "f"  : [],
-#     "l"  : [],
-#   }
-
-#   for i in range(n):
-#     theta = i * 2 * pi / n
-#     obj["v"].append( [cos(theta) * size * w_multiplier, sin(theta) * size, z] )
-
-#   for i in range(1,n-1):
-#     obj["f"].append( [[0,i,i+1]] )
-
-#   return obj
+def uvTexture(data):
+  data["uvs"] = data["vertices"][:,:2] / np.max(data["vertices"][:,:2]) / 2 + 0.5

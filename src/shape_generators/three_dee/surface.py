@@ -47,15 +47,18 @@ def generate(func = lambda x,y: 0,
   else: data["normals"] = np.full_like(data["vertices"],fill_value=[1.0,105/255,1.0])
   
   logger.debug("Picking Colors")
-  tools.chooseColoring(color)(data, hex = hex,totalx=2**n * 2*limx + 1,totaly=2**n * 2*limy + 1)
+  tools.chooseColoring(color)(data, hex = hex)
   
   logger.debug("Standardizing data type")
+  uvTexture(data, limx=limx,limy=limy,n=n)
   tools.dataToNumpyArray(data)
   return data
 
-def textureColoring(data, totalx, totaly):
-  colors = np.empty((totalx * totaly,2),dtype=np.float32)
-  for j in range(totaly):
-    for i in range(totalx):
-      colors[j*totalx + i][0], colors[j*totalx + i][1] = i/(totalx-1), 1.0 - j/(totaly-1)
-  data["colors"] = colors
+def uvTexture(data, limx, limy, n):
+  index = lambda x,y: (((y+limy) % (2*limy * 2**n + 1))) * (2*limx * 2**n + 1) + (x+limx) % (2*limx * 2**n + 1)
+  uvs = np.full(((2*limy * 2**n + 1) * (2*limx * 2**n + 1),2),[0,0],dtype=np.float32)
+  for yi in range(-limy * 2**n,limy * 2**n + 1):
+    for xi in range(-limx * 2**n,limx * 2**n + 1):
+      uvs[index(xi,yi)] = [(xi/int(2**n)/2+limx)/limx,(yi/int(2**n)/2+limy)/limy]
+  
+  data["uvs"] = uvs

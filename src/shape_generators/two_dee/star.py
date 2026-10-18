@@ -30,32 +30,9 @@ def generate(n:           int   = 5,
   data["normals" ] = np.full((data["vertices"].shape[0],3),[0.0,0.0,1.0],dtype=np.float32)
 
   tools.chooseColoring(mode=color)(data,hex=hex)
-
+  uvTexture(data)
   tools.dataToNumpyArray(data)
   return data
 
-def textureColoring(data):
-  data["colors"] = data["vertices"][:,:2] / np.max(data["vertices"][:,:2]) / 2 + 0.5
-  print(data["colors"])
-# def __circularish(n,size,size_inner,z):
-#   obj = {
-#     "v"  : [],
-#     "vt" : [],
-#     "vn" : [],
-#     "f"  : [],
-#     "l"  : [],
-#   }
-
-#   for i in range(n):
-#     theta = i * 2 * pi / n
-#     alpha = theta + pi / n
-#     obj["v"].append( [cos(theta) * size_inner, sin(theta) * size_inner, z] )
-#     obj["v"].append( [      cos(alpha) * size,       sin(alpha) * size, z] )
-
-#   for i in range(0, 2 * n, 2):
-#     obj["f"].append( [[i,i+1,(i+2)%(2*n)]] )
-#   # please verify that these generates actual triangles
-#   for i in range(1,n-1):
-#     obj["f"].append( [[0,2*i%(2*n),2*(i+1)%(2*n)]] )
-
-#   return obj
+def uvTexture(data):
+  data["uvs"] = data["vertices"][:,:2] / np.max(data["vertices"][:,:2]) / 2 + 0.5

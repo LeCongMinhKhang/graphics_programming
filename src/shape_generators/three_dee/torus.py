@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 def generate(thickness: float = 1.0, 
              hole_size: float = 1.0,
              n:         int   = 8, 
-             color:     str   = "normal",
-             hex = 0xff69ff,
+             color:     str   = "hex",
+             hex = 0xffffff,
              **kwargs):
   thickness = float(thickness) 
   hole_size = float(hole_size) 
@@ -41,22 +41,57 @@ def generate(thickness: float = 1.0,
       listOfQuads.append([index(i+1,j),index(i+1,j+1),index(i,j+1),index(i,j)])
   data["indices"] = tools.quads2triangles(listOfQuads)
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color)(data, hex = hex,ringCount=ringCount,vertPerRing=n)
+  tools.chooseColoring(color)(data, hex = hex)
+  uvTexture(data,ringCount=ringCount,vertPerRing=n)
   tools.dataToNumpyArray(data)
   
   return data
 
-def textureColoring(data,ringCount,vertPerRing):
-  data["colors"] = np.zeros((ringCount*vertPerRing, 2), dtype= np.float32)
-  for i in range(1,ringCount):
-    for j in range(1,vertPerRing):
-      data["colors"][i*vertPerRing + j][0],data["colors"][1] = i / (ringCount-1) ,1.0 - j / (vertPerRing-1)
-  
-  
+def uvTexture(data,ringCount,vertPerRing):
+  verticalSlice = tools.uvSlicer(data,[
+    {"splits":[v * ringCount for v in range(vertPerRing)]+[0]},
+    # {"splits":[v * ringCount + ringCount//2 for v in range(vertPerRing)]+[ringCount//2]},
+    # {"splits":[c for c in range(ringCount)]+[0]},
+    # {"splits":[c for c in range(ringCount*vertPerRing//2,ringCount + ringCount*vertPerRing//2)]+[ringCount*vertPerRing//2]},
 
-# def __circularish(n,size,z):
-#   res = []
-#   for i in range(n):
-#     theta = i * 2 * pi / n
-#     res.append( [cos(theta) * size , sin(theta) * size, z] )
-#   return res
+
+    # {"splits":[v * ringCount for v in range(vertPerRing)]+[0],"tears":[ringCount * vertPerRing//2+1,ringCount * (vertPerRing//2+1)-1]},
+    # {"splits":[c for c in range(ringCount)]+[0],"tears":[ringCount + ringCount//2,ringCount*(vertPerRing-1) + ringCount//2]},
+  ])
+  rightSide = tools.getUvSide(data,verticalSlice,[0],[ringCount-1])
+  horizontalSlice = tools.uvSlicer(data,[
+    {"splits":[c for c in range(ringCount)]+[verticalSlice[0][rightSide]]},
+  ])
+  # sides of uv mapped
+  #               -rc+
+  #     tl ------ top ------- tr
+  #      |                    |
+  # -    l                    r
+  # v    e                    i
+  # p    f      middle        g
+  # r    t                    h
+  # +    |                    t
+  #      |                    |
+  #     bl----- bottom ------ br
+  data["uvs"] = np.full((data["vertices"].shape[0],2),[0.0,0.0],dtype=np.float32)
+
+  bottomSide = tools.getUvSide(data,horizontalSlice,[0],[ringCount*(vertPerRing-1)])
+  # starts from top left, assign to top, left, topleft, and middle
+  for x in range(ringCount):
+    for y in range(vertPerRing-1,-1,-1):
+      data["uvs"][y*ringCount+x] = [x/ringCount,y/vertPerRing]
+  
+  print(verticalSlice)
+  # starts from top right, assign to topright and right
+  for y in range(vertPerRing-1,-1,-1):
+    data["uvs"][verticalSlice[y*ringCount+0][rightSide]] = [1,y/vertPerRing]
+  
+  # starts from bottom left, assign to bottom left and bottom
+  for x in range(ringCount):
+    data["uvs"][horizontalSlice[0*ringCount+x][rightSide]] = [x/ringCount,1]
+
+  # assign to bottom right
+    data["uvs"][horizontalSlice[verticalSlice[0][rightSide]][bottomSide]] = [1,1]
+  
+# stop looking at my screen, I can see you
+# every time you intrude into my privacy I will take note

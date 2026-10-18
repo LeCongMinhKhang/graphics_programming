@@ -4,8 +4,8 @@ from .. import tools
 import logging
 logger = logging.getLogger(__name__)
 def generate(size:  float = 1.0,
-             color: str   = "hex",
-             hex = 0xffffff,
+             color: str   = "normal",
+             hex = 0xff69ff,
              **kwargs):
   size  = float(size)
   color = str(color)  

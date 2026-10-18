@@ -33,9 +33,10 @@ def generate(size: float = 1.0, z: float = 0.0, color: str = "position", hex = 0
   tools.vertexNeighborNormals(data)
 
   tools.chooseColoring(mode=color)(data, hex = hex)
+  uvTexture(data)
   tools.dataToNumpyArray(data)
   return data
 
 
-def textureColoring(data):
-  data["colors"] = np.array([[0.0, 1.0], [0.5, 0.0], [1.0, 1.0]], dtype=np.float32)
+def uvTexture(data):
+  data["uvs"] = np.array([[0.5, 1.0], [0.0, 0.0], [1.0, 0.0]], dtype=np.float32)

@@ -40,9 +40,9 @@ def generate(width_1: float = 1.0,
   data["indices" ] = np.array(tools.quads2triangles([[0,1,2,3]]),dtype=np.uint32)
   
   tools.chooseColoring(mode=color)(data, hex=hex)
-
+  uvTexture(data)
   tools.dataToNumpyArray(data)
   return data
 
-def textureColoring(data):
-  data["colors"] = np.array([[0.0,0.0],[0.0,1.0],[1.0,1.0],[1.0,0.0]],dtype= np.float32)
+def uvTexture(data):
+  data["uvs"] = np.array([[0.0,1.0],[0.0,0.0],[1.0,0.0],[1.0,1.0]],dtype= np.float32)
