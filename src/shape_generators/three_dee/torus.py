@@ -48,20 +48,22 @@ def generate(thickness: float = 1.0,
   return data
 
 def uvTexture(data,ringCount,vertPerRing):
+  # me when I box splitter attack:
+  
   verticalSlice = tools.uvSlicer(data,[
     {"splits":[v * ringCount for v in range(vertPerRing)]+[0]},
-    # {"splits":[v * ringCount + ringCount//2 for v in range(vertPerRing)]+[ringCount//2]},
-    # {"splits":[c for c in range(ringCount)]+[0]},
-    # {"splits":[c for c in range(ringCount*vertPerRing//2,ringCount + ringCount*vertPerRing//2)]+[ringCount*vertPerRing//2]},
-
-
-    # {"splits":[v * ringCount for v in range(vertPerRing)]+[0],"tears":[ringCount * vertPerRing//2+1,ringCount * (vertPerRing//2+1)-1]},
-    # {"splits":[c for c in range(ringCount)]+[0],"tears":[ringCount + ringCount//2,ringCount*(vertPerRing-1) + ringCount//2]},
   ])
+  leftSide = tools.getUvSide(data,verticalSlice,[0],[1])
   rightSide = tools.getUvSide(data,verticalSlice,[0],[ringCount-1])
+  
   horizontalSlice = tools.uvSlicer(data,[
-    {"splits":[c for c in range(ringCount)]+[verticalSlice[0][rightSide]]},
+    {"splits":[verticalSlice[0][leftSide]]+[c for c in range(1,ringCount)]+[verticalSlice[0][rightSide]]},
   ])
+  # topSide = tools.getUvSide(data,horizontalSlice,[0],[ringCount])
+  # bottomSide = tools.getUvSide(data,horizontalSlice,[0],[ringCount*(vertPerRing-1)])
+  topSide = tools.getUvSide(data,horizontalSlice,[0],[ringCount*(vertPerRing-1)])
+  bottomSide = tools.getUvSide(data,horizontalSlice,[0],[ringCount])
+  
   # sides of uv mapped
   #               -rc+
   #     tl ------ top ------- tr
@@ -73,25 +75,35 @@ def uvTexture(data,ringCount,vertPerRing):
   # +    |                    t
   #      |                    |
   #     bl----- bottom ------ br
-  data["uvs"] = np.full((data["vertices"].shape[0],2),[0.0,0.0],dtype=np.float32)
+  # quite annoying that (IringCount,IvertexPerRing) is upside down compared to (uvx,uvy)
 
-  bottomSide = tools.getUvSide(data,horizontalSlice,[0],[ringCount*(vertPerRing-1)])
-  # starts from top left, assign to top, left, topleft, and middle
-  for x in range(ringCount):
-    for y in range(vertPerRing-1,-1,-1):
+  data["uvs"] = np.full((data["vertices"].shape[0],2),[5.0,5.0],dtype=np.float32)
+  
+  # middle
+  for x in range(1,ringCount):
+    for y in range(1,vertPerRing):
       data["uvs"][y*ringCount+x] = [x/ringCount,y/vertPerRing]
   
-  print(verticalSlice)
-  # starts from top right, assign to topright and right
-  for y in range(vertPerRing-1,-1,-1):
+  # topleft
+  data["uvs"][horizontalSlice[verticalSlice[0][leftSide]][topSide]] = [0,1]
+  # top
+  for x in range(1,ringCount):
+    data["uvs"][horizontalSlice[0*ringCount+x][topSide]] = [x/ringCount,1]
+  # topright
+  data["uvs"][horizontalSlice[verticalSlice[0][rightSide]][topSide]] = [1,1]
+
+  # left
+  for y in range(1,vertPerRing):
+    data["uvs"][verticalSlice[y*ringCount+0][leftSide]] = [0,y/vertPerRing]
+  # right
+  for y in range(1,vertPerRing):
     data["uvs"][verticalSlice[y*ringCount+0][rightSide]] = [1,y/vertPerRing]
   
-  # starts from bottom left, assign to bottom left and bottom
-  for x in range(ringCount):
-    data["uvs"][horizontalSlice[0*ringCount+x][rightSide]] = [x/ringCount,1]
-
-  # assign to bottom right
-    data["uvs"][horizontalSlice[verticalSlice[0][rightSide]][bottomSide]] = [1,1]
+  # # bottomleft
+  data["uvs"][horizontalSlice[verticalSlice[0][leftSide]][bottomSide]] = [0,0]
+  # bottom
+  for x in range(1,ringCount):
+    data["uvs"][horizontalSlice[0*ringCount+x][bottomSide]] = [x/ringCount,0]
+  # bottomright
+  data["uvs"][horizontalSlice[verticalSlice[0][rightSide]][bottomSide]] = [1,0]
   
-# stop looking at my screen, I can see you
-# every time you intrude into my privacy I will take note

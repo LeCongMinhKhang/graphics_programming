@@ -49,34 +49,40 @@ def uvTexture(data):
   print(isTheSame)
   data["uvs"] = np.full((data["vertices"].shape[0],2),[0.0,0.0],dtype=np.float32)
 
-  #  y=1     ? --- ?
+  #  y=1     2?--- 4?
   #          |     |
-  #    ? --- 0 --- 6 --- ?
+  #    2?--- 0 --- 6 --- 4?
   #    |     |     |     |
-  #    ? --- 1 --- 7 --- ?
+  #    3?--- 1 --- 7 --- 5?
   #          |     |
-  #          3 --- 5
+  #          3?--- 5?
   #          |     |
-  #x,y=0     2 --- 4
-  
+  #x,y=0     2?--- 4?
+  # the only thing you know for sure is that 0,6,1,7 is the backSide
   data["uvs"][0] = [0.25,0.75]
+  data["uvs"][6] = [0.5 ,0.75]
+  data["uvs"][1] = [0.25,0.5]
+  data["uvs"][7] = [0.5 ,0.5]
+
   topSide = tools.getUvSide(data,isTheSame,[2,4],[0,6])
   data["uvs"][isTheSame[2][topSide]] = [0.25,1.0]
   data["uvs"][isTheSame[4][topSide]] = [0.5 ,1.0]
-  data["uvs"][6] = [0.5 ,0.75]
+
   leftSide = tools.getUvSide(data,isTheSame,[2,3],[0,1])
   data["uvs"][isTheSame[2][leftSide]] = [0.0,0.75]
   data["uvs"][isTheSame[3][leftSide]] = [0.0,0.5 ]
-  data["uvs"][1] = [0.25,0.5]
-  data["uvs"][7] = [0.5 ,0.5]
+
   rightSide = tools.getUvSide(data,isTheSame,[4,5],[6,7])
   data["uvs"][isTheSame[4][rightSide]] = [0.75,0.75]
   data["uvs"][isTheSame[5][rightSide]] = [0.75,0.5 ]
 
-  data["uvs"][3] = [0.25,0.25]
-  data["uvs"][5] = [0.5 ,0.25]
-  data["uvs"][2] = [0.25,0.0 ]
-  data["uvs"][4] = [0.5 ,0.0 ]
+  bottomSide = tools.getUvSide(data,isTheSame,[3,5],[1,7])
+  data["uvs"][isTheSame[3][bottomSide]] = [0.25,0.25]
+  data["uvs"][isTheSame[5][bottomSide]] = [0.5 ,0.25]
+
+  frontSide = tools.getUvSide(data,isTheSame,[2,4],[isTheSame[3][bottomSide],isTheSame[5][bottomSide]])
+  data["uvs"][isTheSame[2][frontSide]] = [0.25,0.0 ]
+  data["uvs"][isTheSame[4][frontSide]] = [0.5 ,0.0 ]
 
   [print(i,data["uvs"][i]) for i in range(len(data["uvs"]))]
 

@@ -55,7 +55,7 @@ def scenes(gl_app: AppOgl):
         if not flag:
           groups.append([{p for p in triangle},{i}])
       print("len groups",len(groups))
-
+      obj["uvs"] = np.full((obj["vertices"].shape[0],2),[0,0],dtype=np.float32)
       # print(index(0,0))
       # obj = star.generate(color="normal")
       # print(uvSlicer(obj,[

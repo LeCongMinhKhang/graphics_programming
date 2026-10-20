@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 def generate(top_mult:  float = 1.0,
              n:         int   = 36, 
              radius:    float = 1.0,
-             height:    float = 1.0,
+             height:    float = 2.0,
              color:     str   = "position",
              hex = 0xff69ff,
              **kwargs):
@@ -46,46 +46,52 @@ def generate(top_mult:  float = 1.0,
   tools.dataToNumpyArray(data)
   
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color)(data,hex = hex,height = height, radius = radius)
+  tools.chooseColoring(color)(data,hex = hex)
+  uvTexture(data,height,radius,n)
   tools.dataToNumpyArray(data)
   
   return data
 
-def textureColoring(data,height,radius):
-  data["colors"] = np.empty((data["vertices"].shape[0],2),dtype=np.float32)
+def uvTexture(data,height,radius,n):
+  mercatorProjection = tools.uvSlicer(data,[
+    # pole to pole
+    {"splits":[0,n],"tears":[2*n,2*n+1]},
+  ] + [
+    # bottom edge
+    {"splits":[2*n],"tears":[i,None]} for i in range(n)
+  ] + [
+    # top edge
+    {"splits":[2*n+1],"tears":[i+n,None]} for i in range(n)
+  ])
+  data["uvs"] = np.full((data["vertices"].shape[0],2),[5,5],dtype=np.float32)
   ratioSide = height/(height+2*radius)
   ratioTop = radius/(height+2*radius)
+  data["colors"][0] = [1,0,1]
   
-  n = int((data["vertices"].shape[0]-2)/2)
-  for i in range(n):
-    data["colors"][i]   = [i/n-1,ratioTop+ratioSide]
-    data["colors"][i+n] = [i/n-1,ratioTop]
-  data["colors"][2*n] = [0.5,1.0]
-  data["colors"][2*n+1] = [0.5,0.0]
+  # middle
+  for i in range(1,n):
+    data["uvs"][i]   = [i/n,ratioTop]
+    data["uvs"][i+n] = [i/n,ratioTop+ratioSide]
+    if i < n-1:
+      correctSideBottomEdge = tools.getUvSide(data,mercatorProjection,[2*n],[i,i+1])
+      data["uvs"][mercatorProjection[2*n][correctSideBottomEdge]] = [(i+0.5)/n,0]
+      correctSideTopEdge = tools.getUvSide(data,mercatorProjection,[2*n+1],[i+n,i+n+1])
+      data["uvs"][mercatorProjection[2*n+1][correctSideTopEdge]] = [(i+0.5)/n,1]
+  # left right 
+  leftSide = tools.getUvSide(data,mercatorProjection,[0,n],[1,n+1])
+  data["uvs"][mercatorProjection[0][leftSide]] = [0,ratioTop]
+  data["uvs"][mercatorProjection[n][leftSide]] = [0,ratioTop+ratioSide]
+  rightSide = tools.getUvSide(data,mercatorProjection,[0,n],[n-1,2*n-1])
+  data["uvs"][mercatorProjection[0][rightSide]] = [1,ratioTop]
+  data["uvs"][mercatorProjection[n][rightSide]] = [1,ratioTop+ratioSide]
 
-  # baseNum = data["vertices"].shape[0] - 2
-  # for i in range(baseNum):
-  #   data["colors"][i] = [i/(baseNum-1),i/(baseNum-1)]
-  # data["colors"][baseNum] = [1.0, 0.0]
-  # data["colors"][baseNum+1] = [0.0, 1.0]
-
-
-# def __circularish(n,size,top_mult,z):
-#   obj = {
-#     "v"  : [],
-#     "vt" : [],
-#     "vn" : [],
-#     "f"  : [],
-#     "l"  : [],
-#   }
-
-#   for i in range(n):
-#     theta = i * 2 * pi / n
-#     obj["v"].append( [cos(theta) * size * top_mult, sin(theta) * size * top_mult,  z/2] )
-#     obj["v"].append( [cos(theta) * size, sin(theta) * size, -z/2] )
-
-#   for i in range(1,n-1):
-#     obj["f"].append( [[     0,         2*i, 2*(i+1)]] )
-#     obj["f"].append( [[ 1 + 0, 1 + 2*(i+1), 1 + 2*i]] )
-
-#   return obj
+  # topright bottomright
+  bottomRight = tools.getUvSide(data,mercatorProjection,[2*n+1],[2*n-1,mercatorProjection[n][rightSide]])
+  data["uvs"][mercatorProjection[2*n+1][bottomRight]] = [(n-0.5)/n,1]
+  topRight = tools.getUvSide(data,mercatorProjection,[2*n],[n-1,mercatorProjection[0][rightSide]])
+  data["uvs"][mercatorProjection[2*n][topRight]] = [(n-0.5)/n,0]
+  # topleft bottomleft 
+  topLeft = tools.getUvSide(data,mercatorProjection,[2*n+1],[n+1,mercatorProjection[n][leftSide]])
+  data["uvs"][mercatorProjection[2*n+1][topLeft]] = [0.5/n,1]
+  bottomLeft = tools.getUvSide(data,mercatorProjection,[2*n],[1,mercatorProjection[0][leftSide]])
+  data["uvs"][mercatorProjection[2*n][bottomLeft]] = [0.5/n,0]
