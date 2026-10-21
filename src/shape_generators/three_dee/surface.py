@@ -59,6 +59,6 @@ def uvTexture(data, limx, limy, n):
   uvs = np.full(((2*limy * 2**n + 1) * (2*limx * 2**n + 1),2),[0,0],dtype=np.float32)
   for yi in range(-limy * 2**n,limy * 2**n + 1):
     for xi in range(-limx * 2**n,limx * 2**n + 1):
-      uvs[index(xi,yi)] = [(xi/int(2**n)/2+limx)/limx,(yi/int(2**n)/2+limy)/limy]
+      uvs[index(xi,yi)] = [(xi/int(2**n)/2+limx/2)/limx,(yi/int(2**n)/2+limy/2)/limy]
   
   data["uvs"] = uvs

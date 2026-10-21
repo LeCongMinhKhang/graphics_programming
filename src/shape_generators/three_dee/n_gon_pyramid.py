@@ -56,15 +56,48 @@ def generate(
 
   tools.vertexNeighborNormals(data)
   tools.chooseColoring(color)(data, hex = hex)
+  uvTexture(data,height,base,n)
   tools.dataToNumpyArray(data)
 
   return data
 
 
-def textureColoring(data):
-  data["colors"] = np.empty((data["vertices"].shape[0], 2), dtype=np.float32)
-  baseNum = data["vertices"].shape[0] - 2
-  for i in range(baseNum):
-    data["colors"][i] = [i / (baseNum - 1), i / (baseNum - 1)]
-  data["colors"][baseNum] = [1.0, 0.0]
-  data["colors"][baseNum + 1] = [0.0, 1.0]
+def uvTexture(data,height,radius,n):
+  mercatorProjection = tools.uvSlicer(data,[
+    {"splits":[0],"tears":[n,n+1]},
+  ] + [
+    # bottom edge
+    {"splits":[n],"tears":[i,None]} for i in range(n)
+  ] + [
+    # top edge
+    {"splits":[n+1],"tears":[i,None]} for i in range(n)
+  ])
+  data["uvs"] = np.full((data["vertices"].shape[0],2),[5,5],dtype=np.float32)
+  # ratioSide = height/(height+radius)
+  ratioBase = radius/(height+radius)
+  data["colors"][0] = [1,0,1]
+  
+  # middle
+  for i in range(1,n):
+    data["uvs"][i]   = [i/n,ratioBase]
+    if i < n-1:
+      correctSideBottomEdge = tools.getUvSide(data,mercatorProjection,[n],[i,i+1])
+      data["uvs"][mercatorProjection[n][correctSideBottomEdge]] = [(i+0.5)/n,0]
+      correctSideTopEdge = tools.getUvSide(data,mercatorProjection,[n+1],[i,i+1])
+      data["uvs"][mercatorProjection[n+1][correctSideTopEdge]] = [(i+0.5)/n,1]
+  # left right 
+  leftSide = tools.getUvSide(data,mercatorProjection,[0],[1])
+  data["uvs"][mercatorProjection[0][leftSide]] = [0,ratioBase]
+  rightSide = tools.getUvSide(data,mercatorProjection,[0],[n-1])
+  data["uvs"][mercatorProjection[0][rightSide]] = [1,ratioBase]
+
+  # topright bottomright
+  bottomRight = tools.getUvSide(data,mercatorProjection,[n+1],[n-1,mercatorProjection[0][rightSide]])
+  data["uvs"][mercatorProjection[n+1][bottomRight]] = [(n-0.5)/n,1]
+  topRight = tools.getUvSide(data,mercatorProjection,[n],[n-1,mercatorProjection[0][rightSide]])
+  data["uvs"][mercatorProjection[n][topRight]] = [(n-0.5)/n,0]
+  # topleft bottomleft 
+  topLeft = tools.getUvSide(data,mercatorProjection,[n+1],[n+1,mercatorProjection[0][leftSide]])
+  data["uvs"][mercatorProjection[n+1][topLeft]] = [0.5/n,1]
+  bottomLeft = tools.getUvSide(data,mercatorProjection,[n],[1,mercatorProjection[0][leftSide]])
+  data["uvs"][mercatorProjection[n][bottomLeft]] = [0.5/n,0]

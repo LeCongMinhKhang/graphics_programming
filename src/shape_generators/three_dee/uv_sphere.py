@@ -64,23 +64,51 @@ def generate(size:  float = 1.0,
   data["indices" ] = indices
 
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color)(data, hex = hex,latNum=n,numOfVertPerLatRing=numOfVertPerLatRing)
+  tools.chooseColoring(color)(data, hex = hex)
+  uvTexture(data,numOfVertPerLatRing,n)
   tools.dataToNumpyArray(data)
   return data
 
-def textureColoring(data,latNum,numOfVertPerLatRing):
-  data["colors"] = np.zeros((latNum*numOfVertPerLatRing + 2, 2), dtype= np.float32)
-  for i in range(1,latNum):
-    for j in range(numOfVertPerLatRing):
-      data["colors"][i * numOfVertPerLatRing + j][0],data["colors"][1] = j / (numOfVertPerLatRing-1) ,1.0 - i / latNum
+def uvTexture(data,novplr,n):
+  poleIndex = novplr * n
+
+  mercatorProjection = tools.uvSlicer(data,[
+    # pole to pole
+    {"splits":[i*novplr for i in range(n)],"tears":[poleIndex,poleIndex+1]},
+  ] + [
+    # bottom edge
+    {"splits":[poleIndex],"tears":[i,None]} for i in range(novplr)
+  ] + [
+    # top edge
+    {"splits":[poleIndex+1],"tears":[i+(n-1)*novplr,None]} for i in range(novplr)
+  ])
+  data["uvs"] = np.full((data["vertices"].shape[0],2),[5,5],dtype=np.float32)
   
-  poleIndex = latNum*numOfVertPerLatRing
-  data["colors"][poleIndex    ][0], data["colors"][poleIndex    ][1] = 0.0,1.0
-  data["colors"][poleIndex + 1][0], data["colors"][poleIndex + 1][1] = 1.0,0.0
- 
-# def __circularish(n,size,z):
-#   res = []
-#   for i in range(n):
-#     theta = i * 2 * pi / n
-#     res.append( [cos(theta) * size , sin(theta) * size, z] )
-#   return res
+  data["colors"][0] = [1,0,1]
+  
+  # middle
+  for i in range(n):
+    for j in range(1,novplr):
+      data["uvs"][i*novplr + j]   = [j/novplr,(i+1)/(n+1)]
+  for i in range(1,novplr-1):
+    correctSideBottomEdge = tools.getUvSide(data,mercatorProjection,[poleIndex],[i,i+1])
+    data["uvs"][mercatorProjection[poleIndex][correctSideBottomEdge]] = [(i+0.5)/novplr,0]
+    correctSideTopEdge = tools.getUvSide(data,mercatorProjection,[poleIndex+1],[i+(n-1)*novplr,i+(n-1)*novplr+1])
+    data["uvs"][mercatorProjection[poleIndex+1][correctSideTopEdge]] = [(i+0.5)/novplr,1]
+  # left right 
+  leftSide = tools.getUvSide(data,mercatorProjection,[0],[1])
+  rightSide = tools.getUvSide(data,mercatorProjection,[0],[novplr-1])
+  for i in range(n):
+    data["uvs"][mercatorProjection[i*novplr][leftSide]] = [0,(i+1)/(n+1)]
+    data["uvs"][mercatorProjection[i*novplr][rightSide]] = [1,(i+1)/(n+1)]
+
+  # topright bottomright
+  topRight = tools.getUvSide(data,mercatorProjection,[poleIndex+1],[n*novplr-1,mercatorProjection[(n-1)*novplr][rightSide]])
+  data["uvs"][mercatorProjection[poleIndex+1][topRight]] = [(novplr-0.5)/novplr,1]
+  bottomRight = tools.getUvSide(data,mercatorProjection,[poleIndex],[novplr-1,mercatorProjection[0][rightSide]])
+  data["uvs"][mercatorProjection[poleIndex][bottomRight]] = [(novplr-0.5)/novplr,0]
+  # topleft bottomleft 
+  topLeft = tools.getUvSide(data,mercatorProjection,[poleIndex+1],[(n-1)*novplr+1,mercatorProjection[(n-1)*novplr][leftSide]])
+  data["uvs"][mercatorProjection[poleIndex+1][topLeft]] = [0.5/novplr,1]
+  bottomLeft = tools.getUvSide(data,mercatorProjection,[poleIndex],[1,mercatorProjection[0][leftSide]])
+  data["uvs"][mercatorProjection[poleIndex][bottomLeft]] = [0.5/novplr,0]

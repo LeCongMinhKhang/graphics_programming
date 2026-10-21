@@ -19,15 +19,15 @@ def scenes(gl_app: AppOgl):
     "trapezoid"      : {"gen": lambda: trapezoid.generate()},
     "star"           : {"gen": lambda: star.generate()     },
     "arrow"          : {"gen": lambda: arrow.generate()    },
-    "cube"           : {"gen": lambda: cube.generate()      ,"texture":"inputs/textures/cube_test_texture.jpg"},
-    "sphere"         : {"gen": lambda: uv_sphere.generate()},
+    "cube"           : {"gen": lambda: cube.generate(),"texture":"inputs/textures/cube_test_texture.jpg"},
+    "sphere"         : {"gen": lambda: uv_sphere.generate(),"texture":"inputs/textures/world3.jpg"},
     "cylinder"       : {"gen": lambda: cylinder.generate() },
     "cone"           : {"gen": lambda: n_gon_pyramid.generate(shape_type="cone")},
     "truncated_cone" : {"gen": lambda: cylinder.generate(top_mult=0.5)          },
-    "tetrahedron"    : {"gen": lambda: n_gon_pyramid.generate(shape_type="tetrahedron")},
-    "torus"          : {"gen": lambda: torus.generate()},
-    "prism"          : {"gen": lambda: cylinder.generate(n=3)},
-    "surface"        : {"gen": lambda: surface.generate(limx=5,limy=5,n=3,func=lambda x,y: np.sin(x)+np.sin(y))},
+    "tetrahedron"    : {"gen": lambda: n_gon_pyramid.generate(shape_type="tetrahedron"),"texture":"inputs/textures/obama.jpg"},
+    "torus"          : {"gen": lambda: torus.generate()       },
+    "prism"          : {"gen": lambda: cylinder.generate(n=3) },
+    "surface"        : {"gen": lambda: surface.generate(limx=5,limy=5,n=3,func=lambda x,y: np.sin(x)+np.sin(y)),"texture":"inputs/textures/obama.jpg"},
   }
   def make_build_scene(name):
     def build_scene(self):

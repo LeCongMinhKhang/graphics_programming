@@ -153,7 +153,7 @@ def uvSlicer(data,seams,debug = False):
     rgb[(channelStart  )%3] = min(   (curr+budget - channelStart/3         )/budget ,1) 
     rgb[(channelStart+1)%3] = min(max(curr+budget - channelStart/3 - 1/3, 0)/budget ,1) 
     rgb[(channelStart+2)%3] = min(max(curr+budget - channelStart/3 - 2/3, 0)/budget ,1) 
-    if debug: print("rgb", g, rgb)
+    # if debug: print("rgb", g, rgb)
 
     for f in groups[g]["f"]:
       for v in range(3):
@@ -206,7 +206,7 @@ def uvSlicer(data,seams,debug = False):
   longest = 0
   for i in range(1,len(groups)):
     if len(groups[i]["f"]) > len(groups[i-1]["f"]): longest = i
-  [print(len(g["f"])) for g in groups]
+  # [print(len(g["f"])) for g in groups]
   # notLongest = [i for i in range(len(groups)) if i != longest]
   for g in range(len(groups)):
     makeFaceVerticesCopy(g,longest)
