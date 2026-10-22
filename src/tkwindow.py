@@ -327,6 +327,7 @@ class AppOgl(OpenGLFrame):
       "flat": -1,
       "interpolation": -1,
       "phong": -1,
+      "goureaud": -1,
       "fire": -1,
       "water": -1,
     }
@@ -516,6 +517,9 @@ class AppOgl(OpenGLFrame):
       case "phong":
         vert_shader = "./shaders/lighting.vert"
         frag_shader = "./shaders/phong.frag"
+      case "goureaud":
+        vert_shader = "./shaders/goureaud.vert"
+        frag_shader = "./shaders/interp.frag"
       case "fire":
         vert_shader = "./shaders/lighting.vert"
         frag_shader = "./shaders/fire.frag"

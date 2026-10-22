@@ -8,14 +8,14 @@ uniform mat4 projection, view, model; // space transformation matrices
 uniform float iRotation; // rotation period, if 0 then no movement
 uniform float iTime; // seconds
 
-out vec3 fragment_color; // vertex color
-out vec2 fragment_tex_coord; // texture coordinates
+out vec3 frag_color; // vertex color
+out vec2 frag_tex_coord; // texture coordinates
 
 #define PI 3.14159265358979323846
 
 void main() {
-    fragment_color = color;
-    fragment_tex_coord = uv;
+    frag_color = color;
+    frag_tex_coord = uv;
 
     // rotation
     mat4 rot;
