@@ -469,9 +469,9 @@ class AppOgl(OpenGLFrame):
     ambient_color = {
       "name": "ambient_color",
       "type": "vec3",
-      "value": np.array([0.1, 0.1, 0.1], dtype=np.float32),
+      "value": np.array([0,0,1], dtype=np.float32),
     }
-    k_ambient = {"name": "k_ambient", "type": "float", "value": 1.0}
+    k_ambient = {"name": "k_ambient", "type": "float", "value": 0.1}
     k_diffuse = {"name": "k_diffuse", "type": "float", "value": 1.0}
     k_specular = {"name": "k_specular", "type": "float", "value": 0.5}
     shininess = {"name": "shininess", "type": "float", "value": 32.0}

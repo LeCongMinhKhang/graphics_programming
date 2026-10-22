@@ -46,7 +46,6 @@ def uvTexture(data):
     {"splits":[2,4],"tears":[0,6]},
     {"splits":[3,2,4,5],"tears":[1,7]},
   ])
-  print(isTheSame)
   data["uvs"] = np.full((data["vertices"].shape[0],2),[0.0,0.0],dtype=np.float32)
 
   #  y=1     2?--- 4?
@@ -83,6 +82,4 @@ def uvTexture(data):
   frontSide = tools.getUvSide(data,isTheSame,[2,4],[isTheSame[3][bottomSide],isTheSame[5][bottomSide]])
   data["uvs"][isTheSame[2][frontSide]] = [0.25,0.0 ]
   data["uvs"][isTheSame[4][frontSide]] = [0.5 ,0.0 ]
-
-  [print(i,data["uvs"][i]) for i in range(len(data["uvs"]))]
 

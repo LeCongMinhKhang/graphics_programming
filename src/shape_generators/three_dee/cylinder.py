@@ -66,7 +66,6 @@ def uvTexture(data,height,radius,n):
   data["uvs"] = np.full((data["vertices"].shape[0],2),[5,5],dtype=np.float32)
   ratioSide = height/(height+2*radius)
   ratioTop = radius/(height+2*radius)
-  data["colors"][0] = [1,0,1]
   
   # middle
   for i in range(1,n):

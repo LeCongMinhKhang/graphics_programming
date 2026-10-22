@@ -67,7 +67,7 @@ void main() {
     vec3 N = normalize(frag_normal);
     vec3 V = normalize(view_pos - frag_pos);
 
-    result.xyz *= .1 * k_ambient * frag_color;
+    result.xyz *= k_ambient * ambient_color * surface_color;
     for (int i = 0; i < num_lights; ++i) {
         result.xyz += calcLight(surface_color.xyz, lights[i], N, V);
     }

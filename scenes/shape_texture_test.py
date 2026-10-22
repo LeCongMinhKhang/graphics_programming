@@ -20,7 +20,7 @@ def scenes(gl_app: AppOgl):
     "star"           : {"gen": lambda: star.generate()     },
     "arrow"          : {"gen": lambda: arrow.generate()    },
     "cube"           : {"gen": lambda: cube.generate(),"texture":"inputs/textures/cube_test_texture.jpg"},
-    "sphere"         : {"gen": lambda: uv_sphere.generate(),"texture":"inputs/textures/world3.jpg"},
+    "sphere"         : {"gen": lambda: uv_sphere.generate(),"texture":"inputs/textures/world1.jpg"},
     "cylinder"       : {"gen": lambda: cylinder.generate() },
     "cone"           : {"gen": lambda: n_gon_pyramid.generate(shape_type="cone")},
     "truncated_cone" : {"gen": lambda: cylinder.generate(top_mult=0.5)          },

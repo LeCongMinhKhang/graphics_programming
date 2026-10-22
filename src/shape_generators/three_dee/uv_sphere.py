@@ -84,8 +84,6 @@ def uvTexture(data,novplr,n):
   ])
   data["uvs"] = np.full((data["vertices"].shape[0],2),[5,5],dtype=np.float32)
   
-  data["colors"][0] = [1,0,1]
-  
   # middle
   for i in range(n):
     for j in range(1,novplr):
