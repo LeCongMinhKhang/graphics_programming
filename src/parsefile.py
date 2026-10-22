@@ -2,6 +2,21 @@ from OpenGL import GL
 import numpy as np
 from src.shape_generators import tools
 
+def parseMaterials(path):
+  materials = {}
+  currentMat = None
+  with open(path) as file:
+    for line in file:
+      string = line.strip()
+      arr = string.split(" ")
+      match arr[0]:
+        case "newmtl":
+          materials[arr[1]] = [1,1,1]
+          currentMat = arr[1]
+        case "Kd":
+          materials[currentMat] = [arr[1],arr[2],arr[3]]
+  print(materials)
+  return materials
 
 def parseFile(path):
   obj = {
@@ -19,10 +34,17 @@ def parseFile(path):
     vNone = [None for i in obj["v"][0]] if len(obj["v"]) > 0 else None
     vtNone = [None for i in obj["vt"][0]] if len(obj["vt"]) > 0 else None
     vnNone = [None for i in obj["vn"][0]] if len(obj["vn"]) > 0 else None
+    materials = {}
+    currentMat = None
     for line in file:
-      string = line.rstrip()
+      string = line.strip()
       arr = string.split(" ")
       match arr[0]:
+        case "mtllib":
+          materials = parseMaterials(f"{path}/../{arr[1]}")
+        case "usemtl":
+          currentMat = arr[1]
+          print(currentMat)
         case "v":
           obj["v"].append([float(i) for i in arr[1:]])
           if vNone is None:
@@ -49,12 +71,11 @@ def parseFile(path):
 
             if verticesIndex is None:
               data["vertices"].append(obj["v"][parsed[i][0]] if parsed[i][0] is not None else vNone)
-              data["uvs"].append(obj["vt"][parsed[i][1]]) if len(parsed[i]) > 1 and parsed[i][
-                1
-              ] is not None else None
-              data["normals"].append(obj["vn"][parsed[i][2]]) if len(parsed[i]) > 2 and parsed[i][
-                2
-              ] is not None else None
+              data["colors"].append(materials.get(currentMat,[1,1,1]))
+              if len(parsed[i]) > 1 and parsed[i][1] is not None:
+                data["uvs"].append(obj["vt"][parsed[i][1]])
+              if len(parsed[i]) > 2 and parsed[i][2] is not None:
+                data["normals"].append(obj["vn"][parsed[i][2]])
 
               tripletHashmap[keys[i]] = verticesCount
               verticesIndex = verticesCount
