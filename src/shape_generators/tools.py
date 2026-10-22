@@ -47,47 +47,71 @@ def quads2triangles(listOfQuads):
     res.append(quad[2])
     res.append(quad[3])
   return res
+
+
 # UV-Slicer ############################################
-def getUvSide(data,isTheSame,seamVertices,common):
+def getUvSide(data, isTheSame, seamVertices, common):
   out = set()
   for v in seamVertices:
     candidateSides = isTheSame[v].keys()
     for cSide in candidateSides:
       for i in range(data["indices"].shape[0]):
         if isTheSame[v][cSide] == data["indices"][i]:
-          howMany = len(list(filter(lambda c: c in data["indices"][(i//3)*3:(i//3)*3+3],common)))
-          if howMany ==len(common):
+          howMany = len(
+            list(filter(lambda c: c in data["indices"][(i // 3) * 3 : (i // 3) * 3 + 3], common))
+          )
+          if howMany == len(common):
             out.add(cSide)
   return list(out)[0]
-def uvSlicer(data,seams,debug = False):
+
+
+def uvSlicer(data, seams, debug=False):
   # there are a few groups of vertices with specific relation to the seam vertices
   # + add1 = vertices that connects to 2 of the seam's to form a face (unknown which side it is)
   # + add2 = when 1 seam vertex connects to 2 non seam vertices to form a face (unknown which side it is)
   # there is potential to have it be that a "side" of a seam is determined by a set of add1s and add2s that shares an non seam vertices
-  
+
   def assignSideToFaces(facesI):
     nonlocal indices, groups, fullSeam, seam2
     for i in facesI:
-      triangle = indices[i:i+3]
-      triangle2 = [{triangle[v],triangle[(v+1)%3]} for v in range(3)]
+      triangle = indices[i : i + 3]
+      triangle2 = [{triangle[v], triangle[(v + 1) % 3]} for v in range(3)]
       nonSeam = [e for e in triangle2 if e not in seam2]
-      if groups == []: groups.append({"v": nonSeam,"f": {i,}})
+      if groups == []:
+        groups.append(
+          {
+            "v": nonSeam,
+            "f": {
+              i,
+            },
+          }
+        )
       else:
-        isPartOf=[]
+        isPartOf = []
         for g in range(len(groups)):
           if [e for e in triangle2 if e in groups[g]["v"]] != []:
             isPartOf.append(g)
-        
+
         if isPartOf == []:
-          groups.append({"v": nonSeam,"f": {i,}})
+          groups.append(
+            {
+              "v": nonSeam,
+              "f": {
+                i,
+              },
+            }
+          )
         else:
           goTo = isPartOf[0]
           other = isPartOf[1:]
           [groups[goTo]["v"].append(v) for v in nonSeam if v not in groups[goTo]["v"]]
           groups[goTo]["f"].add(i)
 
-          [[groups[goTo]["v"].append(v) for v in groups[o]["v"] if v not in groups[goTo]["v"]] for o in other ]
-          [[groups[goTo]["f"].add(f) for f in groups[o]["f"]] for o in other ]
+          [
+            [groups[goTo]["v"].append(v) for v in groups[o]["v"] if v not in groups[goTo]["v"]]
+            for o in other
+          ]
+          [[groups[goTo]["f"].add(f) for f in groups[o]["f"]] for o in other]
           groups = [groups[g] for g in range(len(groups)) if g not in other]
       # # logger.debug(triangle)
       # if groups == []:
@@ -97,7 +121,7 @@ def uvSlicer(data,seams,debug = False):
       #   isPartOf=[]
       #   newNonSeam = list(filter(lambda e: e not in fullSeam,triangle))
       #   match len(newNonSeam):
-      #     case 2: 
+      #     case 2:
       #       for g in range(len(groups)):
       #         if len(list(filter(lambda e: e not in groups[g]["v"],triangle))) < 3:
       #           isPartOf.append(g)
@@ -124,101 +148,109 @@ def uvSlicer(data,seams,debug = False):
       #     [[groups[goTo]["f"].add(f) for f in groups[o]["f"]] for o in other ]
       #     for o in other: groups[o]["v"] = {}
       #     groups = [g for g in groups if len(g["v"])>0]
-    
-  def makeFaceVerticesCopy(g,longest):
+
+  def makeFaceVerticesCopy(g, longest):
     nonlocal vertices, normals, colors, indices, splits, groups, plannedRedirection, isTheSame
     faces = {i for i in groups[g]["f"]}
-    toBeCopied = [indices[i+j] for j in range(3) for i in faces if indices[i+j] in splits]
-    
+    toBeCopied = [indices[i + j] for j in range(3) for i in faces if indices[i + j] in splits]
+
     indexOfCopy = len(vertices)
     conversion = {}
     if g != longest:
       for tbc in toBeCopied:
         conversion[tbc] = len(vertices)
-        vertices.append([
-            vertices[tbc][0] + (0.1*g+0.05) * 0.1 * normals[tbc][0],
-            vertices[tbc][1] + (0.1*g+0.05) * 0.1 * normals[tbc][1],
-            vertices[tbc][2] + (0.1*g+0.05) * 0.1 * normals[tbc][2],
-          ] if debug else vertices[tbc])
+        vertices.append(
+          [
+            vertices[tbc][0] + (0.1 * g + 0.05) * 0.1 * normals[tbc][0],
+            vertices[tbc][1] + (0.1 * g + 0.05) * 0.1 * normals[tbc][1],
+            vertices[tbc][2] + (0.1 * g + 0.05) * 0.1 * normals[tbc][2],
+          ]
+          if debug
+          else vertices[tbc]
+        )
         normals.append(normals[tbc]) if normals != [] else None
-        colors.append(colors[tbc]) if colors != [] else None  
-      
-    
+        colors.append(colors[tbc]) if colors != [] else None
 
     groupsCount = len(groups)
-    budget = 1/groupsCount
-    curr = g/groupsCount
-    rgb = [0.0,0.0,0.0]
-    channelStart = int(curr*3)
-    rgb[(channelStart  )%3] = min(   (curr+budget - channelStart/3         )/budget ,1) 
-    rgb[(channelStart+1)%3] = min(max(curr+budget - channelStart/3 - 1/3, 0)/budget ,1) 
-    rgb[(channelStart+2)%3] = min(max(curr+budget - channelStart/3 - 2/3, 0)/budget ,1) 
+    budget = 1 / groupsCount
+    curr = g / groupsCount
+    rgb = [0.0, 0.0, 0.0]
+    channelStart = int(curr * 3)
+    rgb[(channelStart) % 3] = min((curr + budget - channelStart / 3) / budget, 1)
+    rgb[(channelStart + 1) % 3] = min(max(curr + budget - channelStart / 3 - 1 / 3, 0) / budget, 1)
+    rgb[(channelStart + 2) % 3] = min(max(curr + budget - channelStart / 3 - 2 / 3, 0) / budget, 1)
     # if debug: print("rgb", g, rgb)
 
     for f in groups[g]["f"]:
       for v in range(3):
         try:
-          offset = toBeCopied.index(indices[f+v])
+          offset = toBeCopied.index(indices[f + v])
           if g != longest:
-            plannedRedirection[f+v] = indexOfCopy+offset
+            plannedRedirection[f + v] = indexOfCopy + offset
 
-          if isTheSame.get(indices[f+v],None) == None: isTheSame[indices[f+v]] = {}
-          isTheSame[indices[f+v]][g]=indexOfCopy+offset if g != longest else indices[f+v]
+          if isTheSame.get(indices[f + v], None) == None:
+            isTheSame[indices[f + v]] = {}
+          isTheSame[indices[f + v]][g] = indexOfCopy + offset if g != longest else indices[f + v]
 
           # if debug:
-          #   colors[indexOfCopy+offset if g != longest else indices[f+v]] = rgb                                                                                  
+          #   colors[indexOfCopy+offset if g != longest else indices[f+v]] = rgb
         except ValueError:
           continue
 
-  indices   = data["indices" ].tolist() if isinstance(data["indices" ],np.ndarray) else data["indices" ]
-  vertices  = data["vertices"].tolist() if isinstance(data["vertices"],np.ndarray) else data["vertices"]
-  normals   = data["normals" ].tolist() if isinstance(data["normals" ],np.ndarray) else data["normals" ]
-  colors    = data["colors"  ].tolist() if isinstance(data["colors"  ],np.ndarray) else data["colors"  ]
-  
+  indices = data["indices"].tolist() if isinstance(data["indices"], np.ndarray) else data["indices"]
+  vertices = (
+    data["vertices"].tolist() if isinstance(data["vertices"], np.ndarray) else data["vertices"]
+  )
+  normals = data["normals"].tolist() if isinstance(data["normals"], np.ndarray) else data["normals"]
+  colors = data["colors"].tolist() if isinstance(data["colors"], np.ndarray) else data["colors"]
+
   splits = []
   fullSeam = []
   seam2 = []
   plannedRedirection = {}
   isTheSame = {}
   for seam in seams:
-    if seam["splits"] is None or len(seam["splits"]) == 0: continue
+    if seam["splits"] is None or len(seam["splits"]) == 0:
+      continue
 
-    if seam.get("tears",None) is None: seam["tears"] = [None,None]
+    if seam.get("tears", None) is None:
+      seam["tears"] = [None, None]
     # tears  = [expandToIncludeTheSame([i]) for i in seam["tears"]]
     # splits = expandToIncludeTheSame(seam["splits"])
     splits += seam["splits"]
-    tearSplitsTear = [seam["tears"][0]]+seam["splits"]+[seam["tears"][1]]
+    tearSplitsTear = [seam["tears"][0]] + seam["splits"] + [seam["tears"][1]]
     fullSeam += tearSplitsTear
-    seam2  += [{tearSplitsTear[i],tearSplitsTear[i+1]} for i in range(len(tearSplitsTear)-1)]
+    seam2 += [{tearSplitsTear[i], tearSplitsTear[i + 1]} for i in range(len(tearSplitsTear) - 1)]
     for t in seam["tears"]:
-      if t is not None and debug: colors[t] = [0.0,0.0,1.0]
-
+      if t is not None and debug:
+        colors[t] = [0.0, 0.0, 1.0]
 
   groups = []
 
-      
   # segregation
   for v in splits:
-    facesConnectedToV = [i//3 * 3 for i in range(len(indices)) if v == indices[i]]
+    facesConnectedToV = [i // 3 * 3 for i in range(len(indices)) if v == indices[i]]
     assignSideToFaces(facesConnectedToV)
-  
+
   # decide seam relocation
   longest = 0
-  for i in range(1,len(groups)):
-    if len(groups[i]["f"]) > len(groups[i-1]["f"]): longest = i
+  for i in range(1, len(groups)):
+    if len(groups[i]["f"]) > len(groups[i - 1]["f"]):
+      longest = i
   # [print(len(g["f"])) for g in groups]
   # notLongest = [i for i in range(len(groups)) if i != longest]
   for g in range(len(groups)):
-    makeFaceVerticesCopy(g,longest)
+    makeFaceVerticesCopy(g, longest)
   # apply Cleave
-  for k,v in plannedRedirection.items():
+  for k, v in plannedRedirection.items():
     indices[k] = v
   data["vertices"] = vertices
-  data["normals" ] = normals 
-  data["colors"  ] = colors  
-  data["indices" ] = indices
+  data["normals"] = normals
+  data["colors"] = colors
+  data["indices"] = indices
   dataToNumpyArray(data)
   return isTheSame
+
 
 # n-gon generators #####################################
 def star_ngonGenerator(n, size, size_inner, z):
@@ -341,7 +373,7 @@ def vertexNeighborNormals(data):
 
   for i in range(0, total, 3):
     if i % 10000 == 0:
-      print(f"Doing {i}/{total} normal calculations", end="\r")
+      print(f"\tDoing {i}/{total} normal calculations", end="\r")
     v0, v1, v2 = indices[i], indices[i + 1], indices[i + 2]
     v00, v11, v22 = vertices[v0], vertices[v1], vertices[v2]
     d0 = v11 - v00
@@ -352,6 +384,7 @@ def vertexNeighborNormals(data):
     normals[v1] += fastCross(d1, -d0)
     normals[v2] += fastCross(d2, -d1)
 
+  print()
   logger.debug("Normalizing normals")
   # don't ask me, my brain is out of steam
   normals = normals / np.linalg.norm(normals, axis=1)[:, np.newaxis]

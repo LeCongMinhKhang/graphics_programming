@@ -42,7 +42,9 @@ class App(tk.Tk):
   ROTATION_PERIOD_MAX = 10.0
   ROTATION_PERIOD_MIN = 0.5
 
-  def __init__(self, data=[], window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
+  def __init__(
+    self, init_scene=None, window_size=(640, 480), camera=Camera, lights=None, wireframe=False
+  ):
     super().__init__()
     self.title("Graphics")
     self.resizable(True, False)
@@ -58,7 +60,7 @@ class App(tk.Tk):
     self.diagnostics.grid(row=0, column=0, sticky="nw")
     self.viewport = AppOgl(
       parent=self,
-      # data=data,
+      init_scene=init_scene,
       window_size=window_size,
       camera=camera,
       # lights=lights,
@@ -206,7 +208,8 @@ class App(tk.Tk):
 
   def change_scene(self, value):
     logger.debug("%s scene selected.", value)
-    args = self.viewport.set_scene(value, self.table.get(id="filePath").get())
+    filePath = self.table.get(id="filePath").get() or None
+    args = self.viewport.set_scene(value, filePath)
     self.update_widgets(*args)
 
   def change_lighting(self, event):
@@ -283,7 +286,7 @@ class AppOgl(OpenGLFrame):
     /,
     *args,
     parent=None,
-    # data=[],
+    init_scene=None,
     window_size=(640, 480),
     camera=Camera,
     # lights=None,
@@ -293,6 +296,7 @@ class AppOgl(OpenGLFrame):
     root = parent if parent is not None else tk.Tk()
     # self.data = data
     self.func = func
+    self.init_scene = init_scene
     self.scenes = {}
 
     self.objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
@@ -323,6 +327,9 @@ class AppOgl(OpenGLFrame):
       "flat": -1,
       "interpolation": -1,
       "phong": -1,
+      "goureaud": -1,
+      "fire": -1,
+      "water": -1,
     }
 
     self.default_static_uniforms = np.array(
@@ -428,6 +435,10 @@ class AppOgl(OpenGLFrame):
     # GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
     GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)  # wireframe disabled
 
+    # init scene
+    if self.init_scene is not None:
+      self.set_scene(self.init_scene)
+
   def update_lights(self, nb_lights, uniforms=None):
     self.nb_lights = nb_lights
     if uniforms is not None:
@@ -439,11 +450,12 @@ class AppOgl(OpenGLFrame):
       "value": np.array(
         [
           Light(
-            position=(
-              10 * np.cos(2 * np.pi * i / self.nb_lights),
-              10 * np.sin(2 * np.pi * i / self.nb_lights),
-              10,
-            ),
+            # position=(
+            #   10 * np.cos(2 * np.pi * i / self.nb_lights),
+            #   10 * np.sin(2 * np.pi * i / self.nb_lights),
+            #   10,
+            # ),
+            position=(1.0, 0, 10),
             color=(1, 1, 1),
             intensity=1 / (i + 1),
           )
@@ -505,6 +517,15 @@ class AppOgl(OpenGLFrame):
       case "phong":
         vert_shader = "./shaders/lighting.vert"
         frag_shader = "./shaders/phong.frag"
+      case "goureaud":
+        vert_shader = "./shaders/goureaud.vert"
+        frag_shader = "./shaders/interp.frag"
+      case "fire":
+        vert_shader = "./shaders/lighting.vert"
+        frag_shader = "./shaders/fire.frag"
+      case "water":
+        vert_shader = "./shaders/water.vert"
+        frag_shader = "./shaders/water.frag"
       case _:
         logger.error('program "%s" not recognized', name)
         exit(1)
@@ -520,7 +541,7 @@ class AppOgl(OpenGLFrame):
 
   def set_scene(self, name, filePath=None):
     self.free_all_objects()
-    scene = self.scenes.get(name if filePath is not None else filePath)
+    scene = self.scenes.get(name if filePath is None else filePath)
     if scene is None and name != "file":
       logger.error('no scene name corresponding to "%s"', name)
       exit(1)
@@ -722,6 +743,6 @@ class AppOgl(OpenGLFrame):
     self.pipeline.draw(uniforms=uniforms, to_draw=self.objects_rendered)
 
 
-def display(data=[], window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
-  App(data=data, window_size=window_size, camera=camera)
+def display(init_scene=None, window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
+  App(init_scene=init_scene, window_size=window_size, camera=camera)
   return 0
