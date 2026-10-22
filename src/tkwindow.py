@@ -430,9 +430,9 @@ class AppOgl(OpenGLFrame):
     GL.glDepthFunc(GL.GL_LESS)  # default; fragment passes if depth < stored depth
 
     GL.glFrontFace(GL.GL_CCW)  # winding order: counter clockwise indexing
-    # GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
+    GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
 
-    # GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
+    GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
     GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)  # wireframe disabled
 
     # init scene

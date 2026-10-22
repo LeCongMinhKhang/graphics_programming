@@ -1,5 +1,6 @@
 from OpenGL import GL
 import numpy as np
+import os
 from src.shape_generators import tools
 
 def parseMaterials(path):
@@ -41,7 +42,7 @@ def parseFile(path):
       arr = string.split(" ")
       match arr[0]:
         case "mtllib":
-          materials = parseMaterials(f"{path}/../{arr[1]}")
+          materials = parseMaterials(os.path.dirname(path)+f"/{arr[1]}")
         case "usemtl":
           currentMat = arr[1]
           print(currentMat)
