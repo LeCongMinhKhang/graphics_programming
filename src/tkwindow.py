@@ -28,13 +28,39 @@ from .tkwindowComponents.scrollable import ScrollableList
 logger = logging.getLogger(__name__)
 
 
+SCENE_MODULES = {
+  "atoms": "default.bohr_atom",
+  "molecules": "default.bohr_atom",
+  "basic": "default.basic_shapes",
+  "custom": "",
+}  # category : module path under `scenes`
+
+
+def load_scenes(gl_app, scene_type: str):
+  module_name = SCENE_MODULES.get(scene_type)
+  if module_name is None:
+    logger.error("Unrecognized scene type %s", scene_type)
+    exit(1)
+
+  module = None
+  if module_name != "":
+    module = importlib.import_module(f"{scenes_pkg.__name__}.{module_name}")
+    if not hasattr(module, "scenes"):
+      logger.error("Module %s has no scenes() function", module.__name__)
+      exit(1)
+    return module.scenes(gl_app)
+  else:
+    module = importlib.import_module(f"{scenes_pkg.__name__}")
+    scenes = {}
+    for module_info in pkgutil.iter_modules(scenes_pkg.__path__):
+      module = importlib.import_module(f"{scenes_pkg.__name__}.{module_info.name}")
+      if hasattr(module, "scenes"):
+        scenes.update(module.scenes(gl_app))  # gather every scene
+    return scenes
+
+
 def load_all_scenes(gl_app):
-  all_scenes = {}
-  for module_info in pkgutil.iter_modules(scenes_pkg.__path__):
-    module = importlib.import_module(f"{scenes_pkg.__name__}.{module_info.name}")
-    if hasattr(module, "scenes"):
-      all_scenes.update(module.scenes(gl_app))  # gather every scene
-  return all_scenes
+  return {cid: load_scenes(gl_app, cid) for cid in SCENE_MODULES}
 
 
 class App(tk.Tk):
@@ -67,8 +93,8 @@ class App(tk.Tk):
     self.viewport.grid(row=0, column=0, sticky="nw")
     self.diagnostics.lift(self.viewport)
 
-    all_scenes = load_all_scenes(self.viewport)
-    self.viewport.scenes = all_scenes
+    self.scenes_types = load_all_scenes(self.viewport)
+    self.viewport.scenes = {k: v for d in self.scenes_types.values() for k, v in d.items()}
 
     # options
     self.lighting_var = tk.StringVar()
@@ -88,12 +114,48 @@ class App(tk.Tk):
     self.table.grid(row=0, column=0, sticky="nsew")
     self.table.grid_columnconfigure(index=(0, 1), weight=1)
     self.table.newRow(self.table.label(text="Control Panel"), self.table.none())
+
+    # combo box style for scene selections
+    style = ttk.Style()
+    style.map("Active.TCombobox", fieldbackground=[("readonly", "white")])
+    style.map("Dim.TCombobox", fieldbackground=[("readonly", "#e6e6e6")])
+
     # scene type
     self.table.newRow(
-      self.table.label(text="Displaying:"),
+      self.table.label(text="Atoms"),
       self.table.comboBox(
-        id="scenetype",
-        values=sorted(["file"] + list(all_scenes.keys())),
+        id="atoms",
+        values=sorted(list(self.scenes_types["atoms"].keys())),
+        # default=17,
+        state="readonly",
+        command=self.select_scene,
+      ),
+    )
+    self.table.newRow(
+      self.table.label(text="Molecules"),
+      self.table.comboBox(
+        id="molecules",
+        values=sorted(list(self.scenes_types["molecules"].keys())),
+        # default=17,
+        state="readonly",
+        command=self.select_scene,
+      ),
+    )
+    self.table.newRow(
+      self.table.label(text="Basic shapes"),
+      self.table.comboBox(
+        id="basic",
+        values=sorted(list(self.scenes_types["basic"].keys())),
+        # default=17,
+        state="readonly",
+        command=self.select_scene,
+      ),
+    )
+    self.table.newRow(
+      self.table.label(text="Custom"),
+      self.table.comboBox(
+        id="custom",
+        values=sorted(["file"] + list(self.scenes_types["custom"].keys())),
         # default=17,
         state="readonly",
         command=self.select_scene,
@@ -173,9 +235,6 @@ class App(tk.Tk):
         command=self.change_rotation,
         variable=self.rotation_var,
       ),
-      # self.table.checkButton(
-      #   id="rotation", command=self.change_rotation, variable=self.rotation_var
-      # ),
     )
     self.after(100, self.viewport.printContext)
     self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -226,7 +285,18 @@ class App(tk.Tk):
       self.table.get(id="filePath").grid_remove()
 
   def select_scene(self, event):
-    value = event.widget.get()
+    # grey other boxes
+    active = event.widget
+    value = active.get()
+    for cid in self.scenes_types.keys():
+      box = self.table.get(id=cid)
+      if box is active:
+        box.configure(style="Active.TCombobox")
+      else:
+        box.set("")  # clear the old selection
+        box.configure(style="Dim.TCombobox")
+
+    # select scene
     if value == "file":
       self.table.get(id="filePathLabel").config(text="File path:")
       self.showHideFilePathField(show=True)
