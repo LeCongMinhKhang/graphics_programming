@@ -63,7 +63,6 @@ class App(tk.Tk):
       init_scene=init_scene,
       window_size=window_size,
       camera=camera,
-      # lights=lights,
       func=self.diagnostics.fps,
     )
     self.viewport.grid(row=0, column=0, sticky="nw")
@@ -74,6 +73,7 @@ class App(tk.Tk):
 
     # options
     self.lighting_var = tk.StringVar()
+    self.material_var = tk.StringVar()
     self.wireframe_var = tk.BooleanVar()
     self.texture_var = tk.BooleanVar()
     self.rotation_var = tk.DoubleVar()
@@ -117,6 +117,17 @@ class App(tk.Tk):
         state="readonly",
         textvariable=self.lighting_var,
         command=self.change_lighting,
+      ),
+    )
+    self.table.newRow(
+      self.table.label(text="Material:"),
+      self.table.comboBox(
+        id="material",
+        values=list(self.viewport.materials.keys()),
+        default=0,
+        state="readonly",
+        textvariable=self.material_var,
+        command=self.change_material,
       ),
     )
     self.table.newRow(
@@ -217,6 +228,11 @@ class App(tk.Tk):
     logger.debug("%s lighting selected.", value)
     self.viewport.select_program(value)
 
+  def change_material(self, event):
+    value = event.widget.get()
+    logger.debug("%s material selected.", value)
+    self.viewport.select_material(value)
+
   def change_rotation(self, _):
     speed = self.rotation_var.get()
     if speed < self.ROTATION_PERIOD_MIN:
@@ -289,7 +305,6 @@ class AppOgl(OpenGLFrame):
     init_scene=None,
     window_size=(640, 480),
     camera=Camera,
-    # lights=None,
     func=lambda a: None,
     **kw,
   ):
@@ -323,13 +338,132 @@ class AppOgl(OpenGLFrame):
     }
     self.pipeline = Pipeline()
     self.programs = {
-      "unwrap": -1,
+      # "unwrap": -1,
       "flat": -1,
       "interpolation": -1,
       "phong": -1,
       "goureaud": -1,
-      "fire": -1,
-      "water": -1,
+    }
+    self.materials = {
+      "default": np.array(
+        [
+          {"name": "ambient_color", "type": "vec3", "value": np.array([1, 1, 1], dtype=np.float32)},
+          {"name": "k_ambient", "type": "float", "value": 0.1},
+          {"name": "k_diffuse", "type": "float", "value": 1.0},
+          {"name": "k_specular", "type": "float", "value": 0.5},
+          {"name": "shininess", "type": "float", "value": 32.0},
+        ]
+      ),
+      # Glossy plastic / polished surface: tight, strong highlight
+      "shiny": np.array(
+        [
+          {"name": "ambient_color", "type": "vec3", "value": np.array([1, 1, 1], dtype=np.float32)},
+          {"name": "k_ambient", "type": "float", "value": 0.1},
+          {"name": "k_diffuse", "type": "float", "value": 0.8},
+          {"name": "k_specular", "type": "float", "value": 1.0},
+          {"name": "shininess", "type": "float", "value": 128.0},
+        ]
+      ),
+      # Chalk, paper, unfinished wood: almost no specular
+      "matte": np.array(
+        [
+          {"name": "ambient_color", "type": "vec3", "value": np.array([1, 1, 1], dtype=np.float32)},
+          {"name": "k_ambient", "type": "float", "value": 0.15},
+          {"name": "k_diffuse", "type": "float", "value": 1.0},
+          {"name": "k_specular", "type": "float", "value": 0.05},
+          {"name": "shininess", "type": "float", "value": 4.0},
+        ]
+      ),
+      # Rubber / cloth: soft, broad, faint highlight
+      "rubber": np.array(
+        [
+          {"name": "ambient_color", "type": "vec3", "value": np.array([1, 1, 1], dtype=np.float32)},
+          {"name": "k_ambient", "type": "float", "value": 0.1},
+          {"name": "k_diffuse", "type": "float", "value": 0.9},
+          {"name": "k_specular", "type": "float", "value": 0.15},
+          {"name": "shininess", "type": "float", "value": 8.0},
+        ]
+      ),
+      # Generic metal: weak diffuse, strong highlight
+      "metal": np.array(
+        [
+          {
+            "name": "ambient_color",
+            "type": "vec3",
+            "value": np.array([0.9, 0.9, 0.95], dtype=np.float32),
+          },
+          {"name": "k_ambient", "type": "float", "value": 0.2},
+          {"name": "k_diffuse", "type": "float", "value": 0.3},
+          {"name": "k_specular", "type": "float", "value": 1.0},
+          {"name": "shininess", "type": "float", "value": 96.0},
+        ]
+      ),
+      # Gold: warm tinted ambient, strong highlight
+      "gold": np.array(
+        [
+          {
+            "name": "ambient_color",
+            "type": "vec3",
+            "value": np.array([1.0, 0.77, 0.34], dtype=np.float32),
+          },
+          {"name": "k_ambient", "type": "float", "value": 0.25},
+          {"name": "k_diffuse", "type": "float", "value": 0.4},
+          {"name": "k_specular", "type": "float", "value": 0.9},
+          {"name": "shininess", "type": "float", "value": 51.0},
+        ]
+      ),
+      # Copper: reddish tint
+      "copper": np.array(
+        [
+          {
+            "name": "ambient_color",
+            "type": "vec3",
+            "value": np.array([0.95, 0.64, 0.54], dtype=np.float32),
+          },
+          {"name": "k_ambient", "type": "float", "value": 0.2},
+          {"name": "k_diffuse", "type": "float", "value": 0.5},
+          {"name": "k_specular", "type": "float", "value": 0.7},
+          {"name": "shininess", "type": "float", "value": 40.0},
+        ]
+      ),
+      # Ceramic / porcelain: bright diffuse with a clean, sharp highlight
+      "ceramic": np.array(
+        [
+          {"name": "ambient_color", "type": "vec3", "value": np.array([1, 1, 1], dtype=np.float32)},
+          {"name": "k_ambient", "type": "float", "value": 0.12},
+          {"name": "k_diffuse", "type": "float", "value": 0.9},
+          {"name": "k_specular", "type": "float", "value": 0.8},
+          {"name": "shininess", "type": "float", "value": 80.0},
+        ]
+      ),
+      # Glass-like: dim diffuse, very sharp highlight
+      "glass": np.array(
+        [
+          {
+            "name": "ambient_color",
+            "type": "vec3",
+            "value": np.array([0.9, 0.95, 1.0], dtype=np.float32),
+          },
+          {"name": "k_ambient", "type": "float", "value": 0.05},
+          {"name": "k_diffuse", "type": "float", "value": 0.2},
+          {"name": "k_specular", "type": "float", "value": 1.0},
+          {"name": "shininess", "type": "float", "value": 256.0},
+        ]
+      ),
+      # Skin / wax: soft, slightly warm, mild broad highlight
+      "skin": np.array(
+        [
+          {
+            "name": "ambient_color",
+            "type": "vec3",
+            "value": np.array([1.0, 0.85, 0.75], dtype=np.float32),
+          },
+          {"name": "k_ambient", "type": "float", "value": 0.15},
+          {"name": "k_diffuse", "type": "float", "value": 0.9},
+          {"name": "k_specular", "type": "float", "value": 0.2},
+          {"name": "shininess", "type": "float", "value": 16.0},
+        ]
+      ),
     }
 
     self.default_static_uniforms = np.array(
@@ -356,8 +490,8 @@ class AppOgl(OpenGLFrame):
     self.bind("<Motion>", self.on_drag)
     self.bind("<Button-1>", self.on_mouse)
     self.bind("<ButtonRelease-1>", self.on_mouse)
-    self.bind("<Button-3>", self.on_mouse)  # on linux mb2
-    self.bind("<ButtonRelease-3>", self.on_mouse)  # on linux mb2
+    self.bind("<Button-3>", self.on_mouse)
+    self.bind("<ButtonRelease-3>", self.on_mouse)
     match sys.platform:
       case "win32" | "darwin":
         self.bind("<MouseWheel>", self.on_mouse)
@@ -440,6 +574,10 @@ class AppOgl(OpenGLFrame):
       self.set_scene(self.init_scene)
 
   def update_lights(self, nb_lights, uniforms=None):
+    """
+    Only <nb_lights> provided: build default lights.
+    <uniforms> provided: use these light uniforms as is.
+    """
     self.nb_lights = nb_lights
     if uniforms is not None:
       self.light_uniforms = uniforms
@@ -450,12 +588,11 @@ class AppOgl(OpenGLFrame):
       "value": np.array(
         [
           Light(
-            # position=(
-            #   10 * np.cos(2 * np.pi * i / self.nb_lights),
-            #   10 * np.sin(2 * np.pi * i / self.nb_lights),
-            #   10,
-            # ),
-            position=(1.0, 0, 10),
+            position=(
+              10 * np.cos(2 * np.pi * i / self.nb_lights),
+              10 * np.sin(2 * np.pi * i / self.nb_lights),
+              10,
+            ),
             color=(1, 1, 1),
             intensity=1 / (i + 1),
           )
@@ -465,31 +602,19 @@ class AppOgl(OpenGLFrame):
     }
     num_lights = {"name": "num_lights", "type": "int", "value": lights["value"].shape[0]}
 
-    # material / ambient (static: they don't change between frames)
-    ambient_color = {
-      "name": "ambient_color",
-      "type": "vec3",
-      "value": np.array([0,0,1], dtype=np.float32),
-    }
-    k_ambient = {"name": "k_ambient", "type": "float", "value": 0.1}
-    k_diffuse = {"name": "k_diffuse", "type": "float", "value": 1.0}
-    k_specular = {"name": "k_specular", "type": "float", "value": 0.5}
-    shininess = {"name": "shininess", "type": "float", "value": 32.0}
-
-    uniforms = np.array(
-      [lights, num_lights, ambient_color, k_ambient, k_diffuse, k_specular, shininess],
-      dtype=object,
-    )
-    self.light_uniforms = uniforms
+    self.light_uniforms = np.array([lights, num_lights])
     logger.debug("changed lights uniforms")
 
   def select_program(self, name):
-    # for each rendered object, update it with correct shaders/program
+    # for each rendered object, update it with selected shaders/program
     for idx in self.objects_rendered:
-      if self.programs[name] == -1:
-        self.create_program(name)  # updates self.programs[name]
-      self.update_object(idx, program_id=self.programs[name])
+      self.update_object(idx, program=name)
     self.update_static_uniforms(update_lights=True)
+
+  def select_material(self, name):
+    # for each rendered object, update it with selected material
+    for idx in self.objects_rendered:
+      self.update_object(idx, material=name)
 
   def select_color_mode(self, color_mode):
     if color_mode not in ("texture", "color"):
@@ -499,15 +624,15 @@ class AppOgl(OpenGLFrame):
       self.update_object(obj_id, color_mode=color_mode)
     self.update_static_uniforms()
 
-  def create_program(self, name: str):
-    program_id = self.programs[name]
+  def create_program(self, name: str, vert_shader=None, frag_shader=None):
+    program_id = self.programs.get(name)
+    if program_id is None:  # program not registered by default (and not created)
+      self.programs[name] = -1
+      program_id = -1
     if program_id >= 0:  # program already created, nothing to do
-      return
+      return program_id
     logger.debug("---------- Adding new program (%s) ----------", name)
     match name:
-      case "unwrap":
-        vert_shader = "./shaders/unwrap.vert"
-        frag_shader = "./shaders/interp.frag"
       case "flat":
         vert_shader = "./shaders/flat.vert"
         frag_shader = "./shaders/flat.frag"
@@ -519,20 +644,17 @@ class AppOgl(OpenGLFrame):
         frag_shader = "./shaders/phong.frag"
       case "goureaud":
         vert_shader = "./shaders/goureaud.vert"
-        frag_shader = "./shaders/interp.frag"
-      case "fire":
-        vert_shader = "./shaders/lighting.vert"
-        frag_shader = "./shaders/fire.frag"
-      case "water":
-        vert_shader = "./shaders/water.vert"
-        frag_shader = "./shaders/water.frag"
+        frag_shader = "./shaders/goureaud.frag"
       case _:
-        logger.error('program "%s" not recognized', name)
-        exit(1)
-    self.programs[name] = self.pipeline.update_program(
+        if vert_shader is None or frag_shader is None:
+          logger.error('program "%s" not recognized', name)
+          exit(1)
+    program_id = self.pipeline.update_program(
       program_id, vert_shader=vert_shader, frag_shader=frag_shader
     )
+    self.programs[name] = program_id
     logger.debug("%s program created", name)
+    return program_id
 
   def update_static_uniforms(self, update_lights=False):
     additional_uniforms = self.light_uniforms if update_lights else np.array([])
@@ -557,7 +679,7 @@ class AppOgl(OpenGLFrame):
       program_name = scene.program_name
       color_mode = scene.color_mode
 
-    self.update_static_uniforms()
+    self.update_static_uniforms(update_lights=True)
     return program_name, color_mode
 
   def create_object(self, obj_name, filePath=None, data=None):
@@ -602,7 +724,7 @@ class AppOgl(OpenGLFrame):
       case "surface":
         obj = surface.generate(func=lambda x, y: np.sin(x) + np.sin(y), n=3)
       case "sphere":
-        obj = uv_sphere.generate(n=16)
+        obj = uv_sphere.generate(n=12)
       case "torus":
         obj = torus.generate(n=16)
       case _:
@@ -614,19 +736,46 @@ class AppOgl(OpenGLFrame):
 
     if not new_object_category and data is not None:
       logger.warning('object name "%s" is already used by system, given data ignored', obj_name)
-    self.create_program(obj_program_name)
-    obj["program_id"] = self.programs[obj_program_name]
+    obj["program_id"] = self.create_program(obj_program_name)
     obj_id = self.add_object(obj_name, obj)
     logger.debug("%s object created", obj_name)
     return obj_id, obj_program_name
 
-  def update_object(self, obj_id: int, program: str = None, **kwargs):
+  def update_object(
+    self, obj_id: int, program: str = None, material=None, static_uniforms=None, **kwargs
+  ):
+    program_id = None
     if program is not None:
-      self.create_program(program)
-      return self.pipeline.update_object(obj_id, program_id=self.programs[program], **kwargs)
-    return self.pipeline.update_object(obj_id, **kwargs)
+      program_id = self.create_program(program)
+    if material is not None:
+      material_uniforms = self.materials.get(material)
+      if material_uniforms is None:
+        logger.error("%s material has never been created.")
+        exit(1)
+      static_uniforms = static_uniforms or np.array([])
+      static_uniforms = np.concatenate((static_uniforms, material_uniforms))
+    return self.pipeline.update_object(
+      obj_id, program_id=program_id, static_uniforms=static_uniforms, **kwargs
+    )
 
   def add_object(self, obj_name, obj):
+    # uniforms
+    material_name = obj.get("material")
+    if material_name is None:
+      material_name = "default"
+    material_uniforms = self.materials.get(material_name)
+    if material_uniforms is None:
+      logger.error("%s material has never been created.")
+      exit(1)
+    obj_uniforms = np.concatenate(
+      (
+        # self.default_static_uniforms,
+        (obj.get("static_uniforms") if "static_uniforms" in obj.keys() else np.array([])),
+        material_uniforms,
+      )
+    )
+
+    # object definition
     idx = self.pipeline.add_object(
       vertices=obj.get("vertices"),
       normals=obj.get("normals"),
@@ -637,12 +786,7 @@ class AppOgl(OpenGLFrame):
       indices=obj.get("indices"),
       mode=obj.get("gl_mode"),
       textures=obj.get("textures"),
-      specific_static_uniforms=np.concatenate(
-        (
-          self.default_static_uniforms,
-          (obj.get("static_uniforms") if "static_uniforms" in obj.keys() else np.array([])),
-        )
-      ),
+      specific_static_uniforms=obj_uniforms,
     )
     if obj_name in self.objects.keys():
       self.objects[obj_name][1].append(idx)
@@ -678,6 +822,8 @@ class AppOgl(OpenGLFrame):
       self.free_object_category(name)
 
   def reserve_object(self, obj_name, filePath=None, data=None):
+    """
+    If a object named <obj_name> is available, <data> will be ignored."""
     entry = self.objects.get(obj_name)
     obj_program_name = ""
     # if there is no more objects to reserve, create a new one
@@ -692,6 +838,12 @@ class AppOgl(OpenGLFrame):
     obj_id = entry[1][entry[0] - 1]
     self.objects_rendered.add(obj_id)
     return obj_id, obj_program_name
+
+  def create_material(self, name, uniforms):
+    if name in self.materials:
+      logger.error("%s material already defined.", name)
+      exit(1)
+    self.materials[name] = uniforms
 
   def get_program_name(self, program_id):
     """Returns the name associated with the program id (linear search)."""
@@ -734,7 +886,6 @@ class AppOgl(OpenGLFrame):
             },
           ]
         ),
-        # self.light_uniforms,
       )
     )
     uniforms = self.cam.update(

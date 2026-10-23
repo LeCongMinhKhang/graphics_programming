@@ -222,10 +222,11 @@ class Pipeline:
     if textures is not None:
       for name, path in textures.items():
         sampler_uniforms.append({"name": name, "value": path, "type": "sampler"})
-    static_uniforms = np.concatenate(
-      (specific_static_uniforms, np.array([model_uniform] + sampler_uniforms))
-    )
-    obj["uniforms"] = static_uniforms
+
+    specific = (
+      [] if specific_static_uniforms is None else [dict(u) for u in specific_static_uniforms]
+    )  # copy to avoid shared instances
+    obj["uniforms"] = np.array(specific + [model_uniform] + sampler_uniforms, dtype=object)
     return len(self.objects) - 1
 
   # @colors: shape (n, 3) = colors, shape (n, 2) = uvs
@@ -306,7 +307,7 @@ class Pipeline:
             updated = True
             break
         if not updated:
-          to_add.append(uniform)
+          to_add.append(dict(uniform))  # copy to avoid keeping instance (might be shared)
 
       self.objects[obj_id]["uniforms"] = np.concatenate((self.objects[obj_id]["uniforms"], to_add))
 
@@ -343,7 +344,6 @@ class Pipeline:
       # upload non-static uniforms
       # specific_uniforms must be also updated for each object
       for uniform in np.concatenate((uniforms, np.array(specific_uniforms))):
-        # for uniform in uniforms:
         if "transpose" in uniform.keys():
           uma.upload_uniform(
             uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]

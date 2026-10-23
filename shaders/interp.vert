@@ -22,9 +22,9 @@ void main() {
     if (iRotation > 1e-6) {
         float theta = 2. * PI * iTime / iRotation;
         rot = mat4(
-                cos(theta), 0., -sin(theta), 0.,
-                0., 1., 0., 0.,
-                sin(theta), 0., cos(theta), 0.,
+                cos(theta), sin(theta), 0., 0.,
+                -sin(theta), cos(theta), 0., 0.,
+                0., 0., 1., 0.,
                 0., 0., 0., 1.
             );
     } else {

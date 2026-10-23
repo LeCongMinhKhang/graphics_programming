@@ -161,14 +161,15 @@ def scenes(gl_app: AppOgl):
     electron = int(electron)
 
     def build_scene(self):
-      self.program_name = "interpolation"
-      self.gl_app.create_program("interpolation")
+      self.program_name = "phong"
       configuration = electronicConfiguration(electron)
 
       # core
       obj = uv_sphere.generate(color="hex", hex=0xFF0000)
       coreId, _ = self.add_object("atomCore", data=obj)
-      self.update_object(coreId, model_matrix=transform.identity(), program_name="interpolation")
+      self.update_object(
+        coreId, model_matrix=transform.identity(), program_name=self.program_name, material="gold"
+      )
 
       for i in range(len(configuration)):
         if configuration[i] == 0:
@@ -177,7 +178,12 @@ def scenes(gl_app: AppOgl):
         # layer
         obj = torus.generate(thickness=0.1, hole_size=2 * (1 + i) - 0.05, color="hex", hex=0xFFFFFF)
         layerId, _ = self.add_object(f"layer-{i}", data=obj)
-        self.update_object(layerId, model_matrix=transform.identity(), program_name="interpolation")
+        self.update_object(
+          layerId,
+          model_matrix=transform.identity(),
+          program_name=self.program_name,
+          material="rubber",
+        )
         template = simple_ngonGenerator(configuration[i], 2 * (1 + i), 0)
 
         # electrons
@@ -187,8 +193,11 @@ def scenes(gl_app: AppOgl):
           self.update_object(
             electronId,
             model_matrix=transform.translate(template[j][0], template[j][1], 0),
-            program_name="interpolation",
+            material="metal",
+            program_name=self.program_name,
           )
+
+      self.add_lights(2)
 
     return build_scene
 
