@@ -47,9 +47,9 @@ def scenes(gl_app: AppOgl):
         frag_shader="./shaders/interp.frag",
       )
 
-      obj = shapes[name]["gen"]()
+      obj_f = lambda: shapes[name]["gen"]()
 
-      objId, _ = self.add_object(f"!texture_{name}", data=obj)
+      objId, _ = self.add_object(f"!texture_{name}", data_f=obj_f)
       self.update_object(
         objId,
         program_name=self.program_name,

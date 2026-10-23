@@ -362,7 +362,7 @@ def vertexNeighborNormals(data):
   indices = data["indices"]
   vertices = data["vertices"]
   total = len(indices)
-  logger.debug("Starting normals")
+  logger.debug("Computing mesh normals")
 
   def fastCross(c, d):
     e = np.zeros_like(c)
@@ -373,7 +373,7 @@ def vertexNeighborNormals(data):
 
   for i in range(0, total, 3):
     if i % 10000 == 0:
-      print(f"\tDoing {i}/{total} normal calculations", end="\r")
+      print(f"\tDid {i}/{total} normal calculations", end="\r")
     v0, v1, v2 = indices[i], indices[i + 1], indices[i + 2]
     v00, v11, v22 = vertices[v0], vertices[v1], vertices[v2]
     d0 = v11 - v00
@@ -384,9 +384,8 @@ def vertexNeighborNormals(data):
     normals[v1] += fastCross(d1, -d0)
     normals[v2] += fastCross(d2, -d1)
 
-  print()
+  print(f"\tDid {total}/{total} normal calculations")
   logger.debug("Normalizing normals")
-  # don't ask me, my brain is out of steam
   normals = normals / np.linalg.norm(normals, axis=1)[:, np.newaxis]
 
   data["normals"] = normals

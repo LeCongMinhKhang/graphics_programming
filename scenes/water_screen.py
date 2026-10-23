@@ -15,7 +15,7 @@ def scenes(gl_app: AppOgl):
       "./shaders/lighting.vert",
       "./shaders/water.frag",
     )
-    # // no light uniforms!
+
     obj, _ = self.add_object("rectangle")
     self.update_object(
       obj,

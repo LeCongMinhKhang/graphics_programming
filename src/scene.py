@@ -3,13 +3,13 @@ from src.tkwindow import AppOgl
 
 class Scene:
   def __init__(self, gl_app: AppOgl):
-    self.program_name = ""
-    self.color_mode = ""
+    self.program_name = "interpolation"
+    self.color_mode = "color"
     self.gl_app = gl_app
 
-  def add_object(self, name, filePath=None, data=None):
+  def add_object(self, name, filePath=None, data_f=None):
     """Returns (obj_id, program_name)"""
-    return self.gl_app.reserve_object(obj_name=name, filePath=filePath, data=data)
+    return self.gl_app.reserve_object(obj_name=name, filePath=filePath, data_f=data_f)
 
   def update_object(
     self,

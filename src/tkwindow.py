@@ -20,7 +20,6 @@ from src.parsefile import parseFile
 from src.shape_generators.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow
 from src.shape_generators.three_dee import cube, cylinder, n_gon_pyramid, surface, uv_sphere, torus
 from src.light import Light
-import src.transform as transform
 
 from .tkwindowComponents.table import Tablerone
 from .tkwindowComponents.stylingHelper import RowTracker as Row, StyleEnum as Ste
@@ -76,6 +75,7 @@ class App(tk.Tk):
     self.material_var = tk.StringVar()
     self.wireframe_var = tk.BooleanVar()
     self.texture_var = tk.BooleanVar()
+    self.backface_culling_var = tk.BooleanVar()
     self.rotation_var = tk.DoubleVar()
     self.nb_lights_var = tk.IntVar()
 
@@ -156,6 +156,15 @@ class App(tk.Tk):
       ),
     )
     self.table.newRow(
+      self.table.label(text="Back face culling"),
+      self.table.checkButton(
+        id="culling",
+        command=self.change_backface_culling,
+        variable=self.backface_culling_var,
+        default=True,
+      ),
+    )
+    self.table.newRow(
       self.table.label(text="Rotation speed"),
       self.table.slider(
         from_=0,
@@ -183,11 +192,11 @@ class App(tk.Tk):
 
   def change_wireframe(self):
     if self.wireframe_var.get():
-      GL.glDisable(GL.GL_CULL_FACE)  # face culling disabled
+      self.change_backface_culling(force=False, log=False)
       GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_LINE)
       logger.debug("Wireframe mode enabled.")
     else:
-      GL.glEnable(GL.GL_CULL_FACE)  # face culling enabled
+      self.change_backface_culling(log=False)
       GL.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL)
       logger.debug("Wireframe mode disabled.")
 
@@ -195,6 +204,15 @@ class App(tk.Tk):
     color_mode = "texture" if self.texture_var.get() else "color"
     logger.debug("coloring with %s mode selected", "texture" if self.texture_var.get() else "color")
     self.viewport.select_color_mode(color_mode)
+
+  def change_backface_culling(self, force=None, log=True):
+    culling = force if force is not None else self.backface_culling_var.get()
+    if culling:
+      GL.glEnable(GL.GL_CULL_FACE)
+    else:
+      GL.glDisable(GL.GL_CULL_FACE)
+    if log:
+      logger.debug("Back face culling %s", "enabled" if culling else "disabled")
 
   def change_nb_lights(self):
     self.viewport.update_lights(self.nb_lights_var.get())
@@ -248,8 +266,11 @@ class App(tk.Tk):
     if color_mode is not None:
       if color_mode == "texture":
         self.texture_var.set(True)
-      if color_mode == "color":
+      elif color_mode == "color":
         self.texture_var.set(False)
+      else:
+        logger.error('%s is an invalid color mode, must be "color" or "texture"', color_mode)
+        exit(1)
 
 
 class Diagnostics(ttk.Frame):
@@ -673,7 +694,7 @@ class AppOgl(OpenGLFrame):
     if scene is None and name == "file":
       self.reserve_object("file", filePath)
       program_name = "interpolation"  # default shader program for obj files
-      color_mode = "texture"  # default coloring mode for obj files
+      color_mode = "color"  # default coloring mode for obj files
     else:
       scene.build_scene()
       program_name = scene.program_name
@@ -821,13 +842,15 @@ class AppOgl(OpenGLFrame):
     for name in self.objects.keys():
       self.free_object_category(name)
 
-  def reserve_object(self, obj_name, filePath=None, data=None):
+  def reserve_object(self, obj_name, filePath=None, data_f: lambda: dict = None):
     """
-    If a object named <obj_name> is available, <data> will be ignored."""
+    If an object named <obj_name> is available, <data_f> will be ignored.
+    """
     entry = self.objects.get(obj_name)
     obj_program_name = ""
     # if there is no more objects to reserve, create a new one
     if (entry is None) or (entry[0] >= len(entry[1])):
+      data = None if data_f is None else data_f()
       _, obj_program_name = self.create_object(obj_name, filePath, data)
       self.objects[obj_name][0] += 1
     else:
