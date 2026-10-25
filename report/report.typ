@@ -131,8 +131,9 @@ Scenes are a collection of objects. The objects positions in the world are chang
 
 
 = Shape Generators
+All shape generators follows a similar process like the following graph, with commonly used algorthms and tools having slightly different applications.
 #figure(
-  image("images/shapeGen.svg", width: 100%),
+  image("images/shapeGen-full.svg", width: 100%),
   caption: [General shape generation flow],
 )
 == Data format
@@ -143,17 +144,22 @@ data = {
   "vertices" # np.array((n, 3))
   "indices"  # (optional): np.array((n)) if ommited, will be picking k-tuples from the vertices array where k is the size of primitive (eg 3 for triangles)
   "colors"   # np.array((n, 3)) each component must be in [0, 1]
+  "uvs"      # np.array((n,2)) each component must be in [0,1]
   "normals": # np.array((n, 3))
   "mode":    # GL mode, indicating the rendering mode (eg: GL\_TRIANGLES, GL\_TRIANGL_STRIP, ...)
 }
 ```
-All shape generators and `.obj` files parsing outputs are converted to this format before being passed into the rendering pipeline.
-
-For the sake of simplicity, the rendering mode is always GL_TRIANGLES.
-
-Colors are set either as a function of a vertex's positioning or a vertex's normal.
-
-Normals are generated with an algorithm. For each triangles specified, we take the normal of the triangle with the cross operation, then we add it to each of the vertices' normals. Finally, we normalize the length of these normals. The result of this is that every vertices receives normals from all the faces it is a part of, thus in general case where vertices are relatively evenly spread it would be pointing away from the object.
+All shape generators and `.obj`/`.mtl` files parsing outputs are converted to this format before being passed into the rendering pipeline:
+- `vertices` and `indices` are generated/parsed per shape/file.
+- `colors`:
+ - from `.mtl` file parsing, for simplicity we only parse the materials' `Kd` field as flat vertex colors
+ - from generators, we have a few modes useful for debugging/making scenes:
+  - `hex`: pass in a hex value for RGB colors (ex. `0xff0000` will color the model red)
+  - `normal`: taking in each vertex's 3 `normals` values as red green blue values, useful to aid in understanding the shape's surface
+  - `position`: taking in each vertex's coordinate scaled such that the model size goes from [0,1] in the three axis as color.
+  - `modulo`: taking in each vertex's coordinate arbritrarily multiplied, modulous-ed, and normalized to fit on [0,1] in the three axis as color. Early implementation for testing.
+- `uvs`: asside from file parsing in and used as is, it is complicatedly generated and has a process we will go into later.
+- `normals`: generated from `vertices` and `indices` using an algorithm
 
 == Obj files
 From the wiki, we can see that `.obj` files are text files with the syntax:
@@ -173,11 +179,14 @@ f 6/4/1 3/5/3 7/6/5
 f 7//1 8//2 9//3
 f ...
 ```
-For now, we shall only focus on the 2 fields v (Vertex) and f (Triangle):
-
-- For `data["vertices"]`, we parse the "v" fields as is
-
-- For `data["indices"]`, the "f" fields in `.obj` files are 1-indexed when referencing which vertex is part of a triangle. As such, converting "f" fields to "indices" will need to decrement all referenced indices by 1. We collect only the `X` number in each pattern `X/Y/Z`.
+Things to note of is that this files contains `vertices`, `uvs`, `normals` with fields starting with `v`, `vt`, `vn`. Also `f` fields denotes `indices`, in the format of having multiple `v/vt/vn` field per vertex index that is in a face, with the indices being 1-indexed.
+Colors are parsed from the `.mtl` files that denotes what material will be applied the next group of faces have.
+The parsing goes as follows:
+- We first parse `v`, `vt`, `vn` into a dictionary `fromFile`.
+- For every index fields we can parse in an `f`, we check if that tripplet exists already in a dictionary `tripplets`:
+ - if it already exists, we append the corresponding index to the output `indices`
+ - otherwise, we append to the `vertices`, `uvs`, `normals`, and the currently set `colors` and take the newly appended position to store in `tripplets`, we append the index to the output `indices`
+The result is a properly formated `data` object to be passed into the pipeline.
 == 2D shapes
 === `ngonGenerator` helper function
 Generating circles comes up a few times in some of the 2D and 3D shapes generation methods, thus a helper function like `ngonGenerator` is very convenient.
@@ -232,6 +241,27 @@ It follows:
 ```]
 Note that the method requires that quads part of the input list needs to have vertices indexed in a counter clockwise direction. Usage of this method would need some consideration in how the listOfQuads are generated.
 
+=== `normalsGenerator` helper function
+Normals generation follows the graph below.
+#figure(
+  image("images/shapeGen-normals.svg", width: 100%),
+  caption: [Normals generator],
+)
+One notible consequence of this algorithm is that vertices that are part of a lot of faces will have its normal heavily biased towards whatever the largest group of faces that shares normal direction. This would encourage the model designers have its `vertices` be evenly spread and prefer to have `indices` mostly tile the surface than concentrate around 1 vertex
+
+=== `uvSlicer` helper functions
+A simple over view of the slicer algorithm is as follows
+#figure(
+  image("images/shapeGen-slicer-simple.svg", width: 100%),
+  caption: [Slicer diagram (simple)],
+)
+The gist is that with the output `isTheSame` the model designer can thoughtfully plan slices on the model surface to beable to map the same vertex at multiple uv coordinates.
+
+A more in-depth look into how the algorithm works is not important to the system as a whole, but a detailed diagram is provided as follows: 
+#figure(
+  image("images/shapeGen-slicer-detailed.svg", width: 100%),
+  caption: [Slicer diagram (detailed)],
+)
 === Cube
 The simplest 3d shape, establishes the generation pattern that is used futher down the line.
 #align(center)[```python
@@ -255,11 +285,26 @@ The simplest 3d shape, establishes the generation pattern that is used futher do
     listOfQuads.append([(i+0)%8,(i+1)%8,(i+3)%8,(i+2)%8])
 ```]
 
-We initialize vertices in pairs that creates 4 parallel edges of the cube going counter clockwise (in the code shown above it is parallel to the z axis).
+We initialize `vertices` in pairs that creates 4 parallel edges of the cube going counter clockwise (in the code shown above it is parallel to the z axis).
 
 Then quads of the top and bottom faces of the cube are hard coded, paying attention to "reverse" the order for the bottom face to ensure that it faces the correct way (backface culling).
 
 Finally, as the order of vertex declaration is suitable, we can use a loop to iterate over the 4 side faces of the cube, with modulo operation `%` to be able to connect the last vertex pair to the first.
+
+For `uvs`, the slicing is chosen to beable to flatten the shape into a cross shape which is a common unwrapping:
+
+#columns(2,[
+  #figure(
+    image("images/cube-wrapped.PNG", width: 80%),
+    caption: [Cube with texture],
+  )
+  #colbreak()
+  #figure(
+    image("images/cube-unwrapped.PNG", width: 80%),
+    caption: [Cube unwrapped],
+  )
+  #colbreak()
+])
 
 === Simple `ngonGenerator` and `quads2triangles` shapes (cylinder, cone, truncated cone, tetrahedron, prism)
 All of these shapes are generated in a process similar to the Cube, as some combination of `ngonGenerator` for the top/bottom faces and a loop to generate quads as side walls:
@@ -269,11 +314,39 @@ All of these shapes are generated in a process similar to the Cube, as some comb
 - Cone: an n-gon pyramid, with an n-gon bottom face and a triangle fan as the side connecting to a vertex at the top
 - tetrahedron: a specifically scaled cone with a triangle as a base
 
+For `uvs`, we position a vertical slice, from pole to pole to form the left/right side of the uv map, as for the triangle fan on top and bottom, we place slices to split each triangle separately to beable to evenly split them along the top and bottom of the uv maps:
+#pagebreak()
+#columns(2,[
+  #figure(
+    image("images/cylinder-wrapped.PNG", width: 80%),
+    caption: [Cylinder with texture],
+  )
+  #colbreak()
+  #figure(
+    image("images/cylinder-unwrapped.PNG", width: 80%),
+    caption: [Cylinder unwrapped],
+  )
+])
+
 === Sphere
 There are multiple ways to create a sphere, we chose uv sphere due to the similarity in construction with the earlier shapes.
 
 In which, a sphere contains multiple `ngonGenerator` n-gons of various sizes and z offsets, akin to the latitudes of a globe. These rings are connected to adjacent loops akin to how the sides of a cylinder was generated, only for multiple levels.
 At the pole, the nearest n-gon to the pole vertex is connected similar to how the cone was generated.
+
+Uv-Sphere's `uvs` is generated the same as the cylinder above. This allows us to use a mercator projection map as a texture to create a globe:
+#columns(2,[
+  #figure(
+    image("images/globe-wrapped.PNG", width: 80%),
+    caption: [Globe],
+  )
+  #colbreak()
+  #figure(
+    image("images/globe-unwrapped.PNG", width: 80%),
+    caption: [Globe unwrapped],
+  )
+])
+
 
 === Torus
 To generate a Torus, we need to take into consideration its properties.
@@ -287,6 +360,21 @@ This means, in practice:
 - we first generate a temporary `n-gon` offset from the z axis
 - borrow the measurements of its vertices to generate our `m-gon`s making up the structure of our torus
 - have some clever loops to connect these `m-gon`s' vertices together to form the surface of the torus
+
+To generate the `uvs` we do a slice along an `n-gon` to define the left/right edges of the uv map, then do another slice along an `m-gon` to define the top/bottom of a uv map. The result is as follows:
+
+#columns(2,[
+  #figure(
+    image("images/torus-wrapped.PNG", width: 80%),
+    caption: [Torus with texture],
+  )
+  #colbreak()
+  #figure(
+    image("images/torus-unwrapped.PNG", width: 80%),
+    caption: [Torus unwrapped],
+  )
+])
+Notice how the surface of the torus perfectly maps every point to a 2D surface where the top/bottom edge of the uv is connected and the left/right of the uv is connected.
 
 === Surface
 Surface rendering takes in a function z = f(x,y) where f(x,y) is a python lambda:
@@ -302,8 +390,9 @@ We populate it evenly with a vertex every dx and dy, and have that vertex's z of
 Lastly, we can connect these vertices with their neighbors to create the surface of our function.
 Note that this implementation can not handle illegal (eg. divide by 0) or limits and can't render (or render accurately) discontinuous functions.
 
-= Shaders
+Since the `limx` and `limy` defines a rectangle area and the surface is continuous (by limitations), `uvs` are very simple to map almost 1 to 1
 
+= Shaders
 In a given scene, each object is associated with a shader program. A shader program is created from 2 shader: a vertex shader and a fragment shader. Specifically, when a program is created (in `Pipeline.update_program`), the 2 shader files are uploaded to the GPU before being compiled. They are then linked into a program, and the 2 former shader objects are destroyed. \
 
 However, the shaders might need some associated data: uniforms and textures. The `UManager class` is charged to handle these.
