@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 SCENE_MODULES = {
   "atoms": "default.bohr_atom",
-  "molecules": "default.bohr_atom",
+  "molecules": "default.molecules",
   "basic": "default.basic_shapes",
   "custom": "",
 }  # category : module path under `scenes`
