@@ -1,4 +1,5 @@
 from src.tkwindow import AppOgl
+import numpy as np
 
 
 class Scene:
@@ -7,7 +8,7 @@ class Scene:
     self.color_mode = "color"
     self.gl_app = gl_app
 
-  def add_object(self, name, filePath=None, data_f=None):
+  def add_object(self, name: str, filePath: str = None, data_f: lambda: dict = None):
     """Returns (obj_id, program_name)"""
     return self.gl_app.reserve_object(obj_name=name, filePath=filePath, data_f=data_f)
 
@@ -36,5 +37,19 @@ class Scene:
   def create_program(self, name, vert_shader=None, frag_shader=None):
     return self.gl_app.create_program(name=name, vert_shader=vert_shader, frag_shader=frag_shader)
 
-  def add_lights(self, nb_lights, uniforms=None):
+  def add_lights(self, nb_lights=None, lights=None):
+    uniforms = None
+    if lights is not None:
+      lights = np.array(lights)
+      nb_lights = lights.shape[0]
+      uniforms = np.array(
+        [
+          {
+            "name": "lights",
+            "type": "lights",
+            "value": lights,
+          },
+          {"name": "num_lights", "type": "int", "value": nb_lights},
+        ]
+      )
     return self.gl_app.update_lights(nb_lights=nb_lights, uniforms=uniforms)

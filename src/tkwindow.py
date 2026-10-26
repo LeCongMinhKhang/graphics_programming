@@ -912,7 +912,7 @@ class AppOgl(OpenGLFrame):
     for name in self.objects.keys():
       self.free_object_category(name)
 
-  def reserve_object(self, obj_name, filePath=None, data_f: lambda: dict = None):
+  def reserve_object(self, obj_name: str, filePath: str = None, data_f: lambda: dict = None):
     """
     If an object named <obj_name> is available, <data_f> will be ignored.
     """
