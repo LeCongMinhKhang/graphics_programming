@@ -99,13 +99,19 @@
 #outline(title: "Table of Contents", indent: auto)
 #pagebreak()
 
-// = Introduction
+= Introduction
 // presentation of the project
+#figure(
+  image("images/gui.png", width: 100%),
+  caption: [Application displaying an hydrogen atom],
+)
+This project aims to provide an interface for displaying 3D scenes. A scene is defined as a collection of objects and lights. The user can create its own scenes through code via the interface provided (see @scenes). Some are available by default, allowing the user to visualize atoms following the Bohr model, molecules and some basic shapes in 2D and 3D. The user has the ability to modify the aspect of the objects by modifying the lighting program used, and the materials of objects in the scenes.
 
 = Software structure
 
 The software has been structured to ensure modularity and concern separation.
-A first module is tasked to get the scene informations and pass it to the window manager. This modules handles the creation of the GL context the window management (display and hud). The draw calls at each frame are managed by the pipeline module that stores scene information as well as the wiring with GPU.
+The GUI module is tasked to set the scene informations (objects to be rendered, different parameter, ...). This module mainly defines the GUI elements with Tkinter, creating GL context and object caching in order to reuse similar objects between scenes.
+Another module, named pipeline, is responsible for uploading data to GPU and drawing the scene selected.
 
 In @struct_diagram is provided a more detailed diagram to better understand the sequence of operations and the responsibilities of each module.
 
@@ -114,7 +120,7 @@ In @struct_diagram is provided a more detailed diagram to better understand the 
   caption: [Diagram of the software structure],
 ) <struct_diagram>
 
-Our application initializes with an empty scene, with no objects displayed. The user can then select one of the registered scenes. To allow better performances and a fluid user experience, objects from the different scenes are cached. This results in short waiting time when changing scenes. The process is detailed in @scene_select.
+Our application initializes with an empty scene, with no objects displayed. The user can then select one of the registered scenes. To allow better performances and a fluid user experience, objects from the different scenes are cached by the window manager module. This results in short waiting time when changing scenes. The process is detailed in @scene_select.
 #figure(
   image("images/scene_select.drawio.png", width: 100%),
   caption: [Details of the scene selection],
@@ -126,9 +132,57 @@ In this project, objects are defined by their attributes:
 - program: the program used to render the object. A single program can be used to render several objects.
 - uniforms: as the programs are shared between objects, an objects can redefine some uniforms of the program to adapt the rendering
 
-== Scenes
+== Scenes <scenes>
 Scenes are a collection of objects. The objects positions in the world are changed thanks to the `model` matrix uniform.
 
+All scenes are defined under the `./scenes/` directory. The applications proceeds to scan it at startup to discover the scenes.
+The user can define its own scenes inside this directory, but sould not modify the `./scenes/default/` directory where are stored the default scenes (basic shapes, atoms and molecules).
+
+To define a new scene, the user must declare a function named `scenes` that takes a `AppOgl` argument, and returns a dictionary of couples \<scene name, `Scene` instance\>. The `Scene` instances have their function `build_scene` overloaded, and this is where the definition of the scene takes place, with the functions provided by the `Scene` class.
+
+#table(
+  columns: 2,
+  [*Function name*], [*Function effect*],
+  [```python add_object(
+    self,
+    name: str,
+    filePath: str = None,
+    data_f: lambda: dict = None,
+  )```],
+  [Add an object of given name. If an object of this name is in memory and available, it is reused.
+    - `name` is the name of the object
+    - If `filePath` is provided, the file is parsed (must be an `.obj` file) and added to the scene. No caching is done on files.\
+    - If `data_f` is provided, the data used to create the object will be obtained from this function. #underline[Warning:] if an object is cached and available with the same name, this parameter will be ignored
+  ],
+
+  [```python update_object(
+    self,
+    obj_id,
+    program_name=None,
+    model_matrix=None,
+    mode=None,
+    static_uniforms=None,
+    textures=None,
+    color_mode=None,
+    material=None,
+  )```],
+  [Updates the data of the object of index `obj_id`. The user should use this function after `add_object` to ensure the object has the wanted properties: a cached object can have been returned, thus having modified properties from the initial object.],
+
+  [```python create_program(self,
+    name,
+    vert_shader=None,
+    frag_shader=None,
+  )```],
+  [Creates a shader program named `name`. If `name` is a predefined shader program, no need to fill `vert_shader` and `frag_shader` paths. \ #underline[Note:] The predefined shader programs (flat, interpolation, phong and goureaud) will be automatically created, no need to call this function for them. \ Returns the id of this program.],
+
+  [```python add_lights(
+  self,
+  nb_lights,
+  uniforms=None,
+  )```],
+  [Add lights to the scene. Takes a list of `Light` class instances.],
+)
+The user can find examples on how to define scenes in the `./scenes/` directory.
 
 = Shape Generators
 All shape generators follows a similar process like the following graph, with commonly used algorthms and tools having slightly different applications.
@@ -414,6 +468,8 @@ Currently, the class is as follow:
 
 With the light passed down to the fragment shader, we simply have to apply a formula (Goureaud, Phong, ...) to obtain the fragment color.
 
+We also provide the support for materials by defining a set of default values for the different variables used during Phong or Goureaud rendering.
+
 = GUI
 // explain user interface choices and navigation
 The graphical user interface (GUI) is composed of a GL display window left and an option panel right.
@@ -424,7 +480,7 @@ The graphical user interface (GUI) is composed of a GL display window left and a
 The left panel displays the scene selected by the user on the left panel under the option "Displaying". In the top left corner a little window indicates the frame displayed per second as well as the frame rate lowest 1% computed on a 1s time window.
 This panel supports mouse interaction through the use of camera: the user can change the direction of the camera by dragging the mouse with left click, zoom with mouse wheel and change the camera position in the scene by dragging the mouse with right click.
 
-The right panel provides the ability for the user to change the scene itself. They thus can select a predefined scene or import an `.obj` file under the "Scene" section. The "Lighting" option apply a given shading program to every object in the scene (some scenes may have objects with different programs). Other options allow the user to change the number of lights, enable wireframe mode or change the rotation speed of the scene.
+The right panel provides the ability for the user to change the scene itself. They can select a predefined scene or import an `.obj` file under the "Scene" section. The "Lighting" option apply a given shading program to every object in the scene (some scenes may have objects with different programs). Other options allow the user to change the number of lights, enable wireframe mode or change the rotation speed of the scene.
 
 // = Performance
 
