@@ -7,7 +7,7 @@ from src.light import Light
 
 def scenes(gl_app: AppOgl):
   scenes = {}
-  light_intensity = 1 / 2
+  light_intensity = 2 / 3
   lights = [
     Light((5, 5, 5), intensity=light_intensity),
     Light((-5, 5, 5), intensity=light_intensity),
@@ -24,7 +24,7 @@ def scenes(gl_app: AppOgl):
 
     # Carbon
     carbonId, _ = self.add_object(
-      "Carbon", data_f=lambda: uv_sphere.generate(color="hex", hex=0x777777)
+      "Carbon", data_f=lambda: uv_sphere.generate(color="hex", hex=0x333333)
     )
     self.update_object(carbonId, model_matrix=transform.identity(), program_name=self.program_name)
 
@@ -73,7 +73,9 @@ def scenes(gl_app: AppOgl):
     oxygenId, _ = self.add_object(
       "Monoxide", data_f=lambda: uv_sphere.generate(color="hex", hex=0xFF0000)
     )
-    self.update_object(oxygenId, model_matrix=transform.identity(), program_name=self.program_name)
+    self.update_object(
+      oxygenId, model_matrix=transform.identity(), program_name=self.program_name, material="metal"
+    )
 
     # Hidrogen1
     obj = lambda: uv_sphere.generate(color="hex", size=0.75, hex=0xFFFFFF)
@@ -82,6 +84,7 @@ def scenes(gl_app: AppOgl):
       oxygen1Id,
       model_matrix=transform.rotate((0, 1, 0), angle=-37.775) @ transform.translate(2, 0, 0),
       program_name=self.program_name,
+      material="metal",
     )
     # Hidrogen2
     oxygen2Id, _ = self.add_object("Dihydrogen", data_f=obj)
@@ -89,6 +92,7 @@ def scenes(gl_app: AppOgl):
       oxygen2Id,
       model_matrix=transform.rotate((0, 1, 0), angle=37.775) @ transform.translate(-2, 0, 0),
       program_name=self.program_name,
+      material="metal",
     )
 
     # Bond1
@@ -100,6 +104,7 @@ def scenes(gl_app: AppOgl):
       @ transform.translate(-1, 0, 0)
       @ transform.rotate((0, 1, 0), angle=90),
       program_name=self.program_name,
+      material="rubber",
     )
     bond2Id, _ = self.add_object("BondH2o", data_f=obj)
     self.update_object(
@@ -108,6 +113,7 @@ def scenes(gl_app: AppOgl):
       @ transform.translate(1, 0, 0)
       @ transform.rotate((0, 1, 0), angle=90),
       program_name=self.program_name,
+      material="rubber",
     )
 
     # lights
