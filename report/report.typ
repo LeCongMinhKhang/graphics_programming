@@ -316,17 +316,46 @@ All of these shapes are generated in a process similar to the Cube, as some comb
 
 For `uvs`, we position a vertical slice, from pole to pole to form the left/right side of the uv map, as for the triangle fan on top and bottom, we place slices to split each triangle separately to beable to evenly split them along the top and bottom of the uv maps:
 #pagebreak()
-#columns(2,[
-  #figure(
-    image("images/cylinder-wrapped.PNG", width: 80%),
-    caption: [Cylinder with texture],
-  )
-  #colbreak()
-  #figure(
-    image("images/cylinder-unwrapped.PNG", width: 80%),
-    caption: [Cylinder unwrapped],
-  )
-])
+// #columns(2,[
+//   #figure(
+//     image("images/cylinder-wrapped.PNG", width: 80%),
+//     caption: [Cylinder with texture],
+//   )
+//   #colbreak()
+//   #figure(
+//     image("images/cylinder-unwrapped.PNG", width: 80%),
+//     caption: [Cylinder unwrapped],
+//   )
+// ])
+// 
+
+  // #figure(
+  //   caption: [Cylinder with texture],
+  // )
+#figure(
+  image("images/anim/anim-10.PNG",width: 100%),
+  caption: [Cylinder textured],
+)
+#figure(
+  columns(3,[
+    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-09.PNG",width: 180%))))
+    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-06.PNG",width: 180%))))
+    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-03.PNG",width: 180%))))
+    #colbreak()
+    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-08.PNG",width: 180%))))
+    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-05.PNG",width: 180%))))
+    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-02.PNG",width: 180%))))
+    #colbreak()
+    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-07.PNG",width: 180%))))
+    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-04.PNG",width: 180%))))
+    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-01.PNG",width: 180%))))
+  ],gutter:0%),
+  caption: [Cylinder stepping through being unwrapped],
+)
+#figure(
+  image("images/anim/anim-00.PNG", width: 100%),
+  caption: [Cylinder unwrapped],
+)
 
 === Sphere
 There are multiple ways to create a sphere, we chose uv sphere due to the similarity in construction with the earlier shapes.
