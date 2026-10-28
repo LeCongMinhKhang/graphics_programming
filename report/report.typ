@@ -591,6 +591,13 @@ The right panel provides the ability for the user to change the scene itself. Th
 )
 
 == Molecules
+#figure(
+  grid(
+    columns: 2,
+    im("molecules/co2.png"), im("molecules/h2o.png"),
+  ),
+  caption: [Molecules],
+)
 
 == Materials
 The @materials displays the variety of materials made available to the user by default. The top row is rendered with the Phong shader, and the bottom row is rendered with Goureaud shader. Each column is a different material used on the same sphere mesh.

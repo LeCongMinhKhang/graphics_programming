@@ -7,7 +7,7 @@ from src.light import Light
 
 def scenes(gl_app: AppOgl):
   scenes = {}
-  light_intensity = 3 / 4
+  light_intensity = 3 / 5
   lights = [
     Light((5, 5, 5), intensity=light_intensity),
     Light((-5, 5, 5), intensity=light_intensity),
@@ -26,7 +26,12 @@ def scenes(gl_app: AppOgl):
     carbonId, _ = self.add_object(
       "Carbon", data_f=lambda: uv_sphere.generate(color="hex", hex=0x333333)
     )
-    self.update_object(carbonId, model_matrix=transform.identity(), program_name=self.program_name)
+    self.update_object(
+      carbonId,
+      model_matrix=transform.identity(),
+      program_name=self.program_name,
+      material="shiny",
+    )
 
     # Oxygen1
     obj = lambda: uv_sphere.generate(color="hex", size=0.75, hex=0xFF0000)
@@ -35,7 +40,7 @@ def scenes(gl_app: AppOgl):
       oxygen1Id,
       model_matrix=transform.translate(2, 0, 0),
       program_name=self.program_name,
-      material="metal",
+      material="shiny",
     )
     # Oxygen2
     oxygen2Id, _ = self.add_object("Oxide", data_f=obj)
@@ -43,7 +48,7 @@ def scenes(gl_app: AppOgl):
       oxygen2Id,
       model_matrix=transform.translate(-2, 0, 0),
       program_name=self.program_name,
-      material="metal",
+      material="shiny",
     )
 
     # Bond1
@@ -74,7 +79,7 @@ def scenes(gl_app: AppOgl):
       "Monoxide", data_f=lambda: uv_sphere.generate(color="hex", hex=0xFF0000)
     )
     self.update_object(
-      oxygenId, model_matrix=transform.identity(), program_name=self.program_name, material="metal"
+      oxygenId, model_matrix=transform.identity(), program_name=self.program_name, material="shiny"
     )
 
     # Hidrogen1
@@ -84,7 +89,7 @@ def scenes(gl_app: AppOgl):
       oxygen1Id,
       model_matrix=transform.rotate((0, 1, 0), angle=-37.775) @ transform.translate(2, 0, 0),
       program_name=self.program_name,
-      material="metal",
+      material="shiny",
     )
     # Hidrogen2
     oxygen2Id, _ = self.add_object("Dihydrogen", data_f=obj)
@@ -92,7 +97,7 @@ def scenes(gl_app: AppOgl):
       oxygen2Id,
       model_matrix=transform.rotate((0, 1, 0), angle=37.775) @ transform.translate(-2, 0, 0),
       program_name=self.program_name,
-      material="metal",
+      material="shiny",
     )
 
     # Bond1
