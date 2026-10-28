@@ -7,7 +7,7 @@ from src.light import Light
 
 def scenes(gl_app: AppOgl):
   scenes = {}
-  light_intensity = 2 / 3
+  light_intensity = 3 / 4
   lights = [
     Light((5, 5, 5), intensity=light_intensity),
     Light((-5, 5, 5), intensity=light_intensity),

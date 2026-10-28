@@ -218,6 +218,7 @@ class Pipeline:
 
     # Uniforms
     model_uniform = {"name": "model", "value": model_matrix, "type": "mat4"}
+    is_textured_uniform = {"name": "isTextured", "value": color_mode == "texture", "type": "bool"}
     sampler_uniforms = []
     if textures is not None:
       for name, path in textures.items():
@@ -226,7 +227,9 @@ class Pipeline:
     specific = (
       [] if specific_static_uniforms is None else [dict(u) for u in specific_static_uniforms]
     )  # copy to avoid shared instances
-    obj["uniforms"] = np.array(specific + [model_uniform] + sampler_uniforms, dtype=object)
+    obj["uniforms"] = np.array(
+      specific + [model_uniform, is_textured_uniform] + sampler_uniforms, dtype=object
+    )
     return len(self.objects) - 1
 
   # @colors: shape (n, 3) = colors, shape (n, 2) = uvs
