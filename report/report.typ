@@ -103,10 +103,11 @@
 // presentation of the project
 #figure(
   image("images/gui.png", width: 100%),
-  caption: [Application displaying an hydrogen atom],
+  caption: [Application at startup],
 )
 This project aims to provide an interface for displaying 3D scenes. A scene is defined as a collection of objects and lights. The user can create its own scenes through code via the interface provided (see @scenes). Some are available by default, allowing the user to visualize atoms following the Bohr model, molecules and some basic shapes in 2D and 3D. The user has the ability to modify the aspect of the objects by modifying the lighting program used, and the materials of objects in the scenes.
 
+= User manual, features
 = Software structure
 
 The software has been structured to ensure modularity and concern separation.
@@ -613,6 +614,9 @@ This reasons led us to create the `Camera` class, a pattern providing 3 main fun
 
 Then, once a camera implementation is passed to the main program, the user simply has to collect the "view" and "projection" uniforms in the vertex shader to compute the final vertices position.
 
+
+= Sources
+The source code for this project can be found in this public Github repository #link("https://github.com/LeCongMinhKhang/graphics_programming").
 
 #pagebreak()
 #outline(title: "List of Figures", target: figure.where(kind: image))
