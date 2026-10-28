@@ -184,13 +184,13 @@ To define a new scene, the user must declare a function named `scenes` that take
 )
 The user can find examples on how to define scenes in the `./scenes/` directory.
 
-= Shape Generators
+== Shape Generators
 All shape generators follows a similar process like the following graph, with commonly used algorthms and tools having slightly different applications.
 #figure(
   image("images/shapeGen-full.svg", width: 100%),
   caption: [General shape generation flow],
 )
-== Data format
+=== Data format
 
 We chose to bundle object data for rendering under the form:
 ```python
@@ -206,16 +206,16 @@ data = {
 All shape generators and `.obj`/`.mtl` files parsing outputs are converted to this format before being passed into the rendering pipeline:
 - `vertices` and `indices` are generated/parsed per shape/file.
 - `colors`:
- - from `.mtl` file parsing, for simplicity we only parse the materials' `Kd` field as flat vertex colors
- - from generators, we have a few modes useful for debugging/making scenes:
-  - `hex`: pass in a hex value for RGB colors (ex. `0xff0000` will color the model red)
-  - `normal`: taking in each vertex's 3 `normals` values as red green blue values, useful to aid in understanding the shape's surface
-  - `position`: taking in each vertex's coordinate scaled such that the model size goes from [0,1] in the three axis as color.
-  - `modulo`: taking in each vertex's coordinate arbritrarily multiplied, modulous-ed, and normalized to fit on [0,1] in the three axis as color. Early implementation for testing.
+  - from `.mtl` file parsing, for simplicity we only parse the materials' `Kd` field as flat vertex colors
+  - from generators, we have a few modes useful for debugging/making scenes:
+    - `hex`: pass in a hex value for RGB colors (ex. `0xff0000` will color the model red)
+    - `normal`: taking in each vertex's 3 `normals` values as red green blue values, useful to aid in understanding the shape's surface
+    - `position`: taking in each vertex's coordinate scaled such that the model size goes from [0,1] in the three axis as color.
+    - `modulo`: taking in each vertex's coordinate arbritrarily multiplied, modulous-ed, and normalized to fit on [0,1] in the three axis as color. Early implementation for testing.
 - `uvs`: asside from file parsing in and used as is, it is complicatedly generated and has a process we will go into later.
 - `normals`: generated from `vertices` and `indices` using an algorithm
 
-== Obj files
+=== Obj files
 From the wiki, we can see that `.obj` files are text files with the syntax:
 ```md
 <fieldtype> <field1> <field2> <etc..>
@@ -238,11 +238,11 @@ Colors are parsed from the `.mtl` files that denotes what material will be appli
 The parsing goes as follows:
 - We first parse `v`, `vt`, `vn` into a dictionary `fromFile`.
 - For every index fields we can parse in an `f`, we check if that tripplet exists already in a dictionary `tripplets`:
- - if it already exists, we append the corresponding index to the output `indices`
- - otherwise, we append to the `vertices`, `uvs`, `normals`, and the currently set `colors` and take the newly appended position to store in `tripplets`, we append the index to the output `indices`
+  - if it already exists, we append the corresponding index to the output `indices`
+  - otherwise, we append to the `vertices`, `uvs`, `normals`, and the currently set `colors` and take the newly appended position to store in `tripplets`, we append the index to the output `indices`
 The result is a properly formated `data` object to be passed into the pipeline.
-== 2D shapes
-=== `ngonGenerator` helper function
+=== 2D shapes
+==== `ngonGenerator` helper function
 Generating circles comes up a few times in some of the 2D and 3D shapes generation methods, thus a helper function like `ngonGenerator` is very convenient.
 
 The exact functionality and implementation varies depending on use cases, which is why the function is copied accross files instead of declared and imported. In general, it takes in:
@@ -260,10 +260,10 @@ for i in range(n) we create a new vertex at coordinate:
 
 #align(center)[$(cos (i theta) times "size",sin (i theta) times "size", z)$]
 
-=== Simple 2D shapes (triangle, rectangle, trapezoid, arrow)
+==== Simple 2D shapes (triangle, rectangle, trapezoid, arrow)
 These shapes are relatively simple, so each generator only takes as parameters a few basic arguments to scale them in different aspects. The vertices then gets their coordinate multiplied accordingly and populating `data["indices"]` is hardcoded.
 
-=== n-gon shapes (pentagon, hexagon, circle, ellipse)
+==== n-gon shapes (pentagon, hexagon, circle, ellipse)
 All of these shapes can be generated with some variation of the `ngonGenerator` function. Notably:
 - Pentagon: n = 5
 - Hexagon: n = 6
@@ -274,8 +274,8 @@ How these rings of vertices used to get triangulated is that they all have 1 com
 
 How they are currently triangulated is adding an extra vertex in the center of the `n-gon` and manually implementing the GL_TRIANGLE_FAN mode with GL_TRIANGLES.
 
-== 3D shapes
-=== `quads2triangles` helper function
+=== 3D shapes
+==== `quads2triangles` helper function
 A lot of 3d shapes are more conveniently generated as quads (4 sided polygon). However, to be able to render in mode GL_TRIANGLES, we need to convert these lists of quads into a list of triangles.
 
 It follows:
@@ -295,7 +295,7 @@ It follows:
 ```]
 Note that the method requires that quads part of the input list needs to have vertices indexed in a counter clockwise direction. Usage of this method would need some consideration in how the listOfQuads are generated.
 
-=== `normalsGenerator` helper function
+==== `normalsGenerator` helper function
 Normals generation follows the graph below.
 #figure(
   image("images/shapeGen-normals.svg", width: 100%),
@@ -303,7 +303,7 @@ Normals generation follows the graph below.
 )
 One notible consequence of this algorithm is that vertices that are part of a lot of faces will have its normal heavily biased towards whatever the largest group of faces that shares normal direction. This would encourage the model designers have its `vertices` be evenly spread and prefer to have `indices` mostly tile the surface than concentrate around 1 vertex
 
-=== `uvSlicer` helper functions
+==== `uvSlicer` helper functions
 A simple over view of the slicer algorithm is as follows
 #figure(
   image("images/shapeGen-slicer-simple.svg", width: 100%),
@@ -311,12 +311,12 @@ A simple over view of the slicer algorithm is as follows
 )
 The gist is that with the output `isTheSame` the model designer can thoughtfully plan slices on the model surface to beable to map the same vertex at multiple uv coordinates.
 
-A more in-depth look into how the algorithm works is not important to the system as a whole, but a detailed diagram is provided as follows: 
+A more in-depth look into how the algorithm works is not important to the system as a whole, but a detailed diagram is provided as follows:
 #figure(
   image("images/shapeGen-slicer-detailed.svg", width: 100%),
   caption: [Slicer diagram (detailed)],
 )
-=== Cube
+==== Cube
 The simplest 3d shape, establishes the generation pattern that is used futher down the line.
 #align(center)[```python
   p = size/2
@@ -347,7 +347,7 @@ Finally, as the order of vertex declaration is suitable, we can use a loop to it
 
 For `uvs`, the slicing is chosen to beable to flatten the shape into a cross shape which is a common unwrapping:
 
-#columns(2,[
+#columns(2, [
   #figure(
     image("images/cube-wrapped.PNG", width: 80%),
     caption: [Cube with texture],
@@ -360,7 +360,7 @@ For `uvs`, the slicing is chosen to beable to flatten the shape into a cross sha
   #colbreak()
 ])
 
-=== Simple `ngonGenerator` and `quads2triangles` shapes (cylinder, cone, truncated cone, tetrahedron, prism)
+==== Simple `ngonGenerator` and `quads2triangles` shapes (cylinder, cone, truncated cone, tetrahedron, prism)
 All of these shapes are generated in a process similar to the Cube, as some combination of `ngonGenerator` for the top/bottom faces and a loop to generate quads as side walls:
 - Cylinder: 2 n-gon top/bottom faces with a list of quads connecting the two
 - Prism: 2 triangle top/bottom faces with a list of quads connecting the two
@@ -381,29 +381,60 @@ For `uvs`, we position a vertical slice, from pole to pole to form the left/righ
 //     caption: [Cylinder unwrapped],
 //   )
 // ])
-// 
+//
 
-  // #figure(
-  //   caption: [Cylinder with texture],
-  // )
+// #figure(
+//   caption: [Cylinder with texture],
+// )
 #figure(
-  image("images/anim/anim-10.PNG",width: 100%),
+  image("images/anim/anim-10.PNG", width: 100%),
   caption: [Cylinder textured],
 )
 #figure(
-  columns(3,[
-    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-09.PNG",width: 180%))))
-    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-06.PNG",width: 180%))))
-    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-03.PNG",width: 180%))))
-    #colbreak()
-    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-08.PNG",width: 180%))))
-    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-05.PNG",width: 180%))))
-    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-02.PNG",width: 180%))))
-    #colbreak()
-    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-07.PNG",width: 180%))))
-    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-04.PNG",width: 180%))))
-    #align(center,box(clip: true, width: 100%, height: auto, align(left,image("images/anim/anim-01.PNG",width: 180%))))
-  ],gutter:0%),
+  columns(
+    3,
+    [
+      #align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+        "images/anim/anim-09.PNG",
+        width: 180%,
+      ))))
+      #align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+        "images/anim/anim-06.PNG",
+        width: 180%,
+      ))))
+      #align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+        "images/anim/anim-03.PNG",
+        width: 180%,
+      ))))
+      #colbreak()
+      #align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+        "images/anim/anim-08.PNG",
+        width: 180%,
+      ))))
+      #align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+        "images/anim/anim-05.PNG",
+        width: 180%,
+      ))))
+      #align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+        "images/anim/anim-02.PNG",
+        width: 180%,
+      ))))
+      #colbreak()
+      #align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+        "images/anim/anim-07.PNG",
+        width: 180%,
+      ))))
+      #align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+        "images/anim/anim-04.PNG",
+        width: 180%,
+      ))))
+      #align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+        "images/anim/anim-01.PNG",
+        width: 180%,
+      ))))
+    ],
+    gutter: 0%,
+  ),
   caption: [Cylinder stepping through being unwrapped],
 )
 #figure(
@@ -411,14 +442,14 @@ For `uvs`, we position a vertical slice, from pole to pole to form the left/righ
   caption: [Cylinder unwrapped],
 )
 
-=== Sphere
+==== Sphere
 There are multiple ways to create a sphere, we chose uv sphere due to the similarity in construction with the earlier shapes.
 
 In which, a sphere contains multiple `ngonGenerator` n-gons of various sizes and z offsets, akin to the latitudes of a globe. These rings are connected to adjacent loops akin to how the sides of a cylinder was generated, only for multiple levels.
 At the pole, the nearest n-gon to the pole vertex is connected similar to how the cone was generated.
 
 Uv-Sphere's `uvs` is generated the same as the cylinder above. This allows us to use a mercator projection map as a texture to create a globe:
-#columns(2,[
+#columns(2, [
   #figure(
     image("images/globe-wrapped.PNG", width: 80%),
     caption: [Globe],
@@ -431,7 +462,7 @@ Uv-Sphere's `uvs` is generated the same as the cylinder above. This allows us to
 ])
 
 
-=== Torus
+==== Torus
 To generate a Torus, we need to take into consideration its properties.
 For it roundedness, we can define it as cutting the torus in half (bisecting) through the plane containing the z axis (the center of the torus's hole) and have its cross section be a circle. The cross section of the torus should be a circle regardless of where you break it in half. In essence we are revolving a circle around some center axis (eg. the z axis in a 3d x y z coordinate system).
 
@@ -446,7 +477,7 @@ This means, in practice:
 
 To generate the `uvs` we do a slice along an `n-gon` to define the left/right edges of the uv map, then do another slice along an `m-gon` to define the top/bottom of a uv map. The result is as follows:
 
-#columns(2,[
+#columns(2, [
   #figure(
     image("images/torus-wrapped.PNG", width: 80%),
     caption: [Torus with texture],
@@ -459,7 +490,7 @@ To generate the `uvs` we do a slice along an `n-gon` to define the left/right ed
 ])
 Notice how the surface of the torus perfectly maps every point to a 2D surface where the top/bottom edge of the uv is connected and the left/right of the uv is connected.
 
-=== Surface
+==== Surface
 Surface rendering takes in a function z = f(x,y) where f(x,y) is a python lambda:
 example: #align(center)[```python
 func = lambda x, y: numpy.sin(x) + numpy.cos(y)
@@ -475,7 +506,7 @@ Note that this implementation can not handle illegal (eg. divide by 0) or limits
 
 Since the `limx` and `limy` defines a rectangle area and the surface is continuous (by limitations), `uvs` are very simple to map almost 1 to 1
 
-= Shaders
+== Shaders
 In a given scene, each object is associated with a shader program. A shader program is created from 2 shader: a vertex shader and a fragment shader. Specifically, when a program is created (in `Pipeline.update_program`), the 2 shader files are uploaded to the GPU before being compiled. They are then linked into a program, and the 2 former shader objects are destroyed. \
 
 However, the shaders might need some associated data: uniforms and textures. The `UManager class` is charged to handle these.
@@ -488,18 +519,18 @@ However, the shaders might need some associated data: uniforms and textures. The
     Currently textures are not supported.
   ]
 
-= Lighting
+== Lighting
 
 The lighting of a scene can completely change its final rendering, hence it plays a major role in computer graphics. In this project, we chose to handle scene lights thanks to a data structure that is passed to the fragment shader as a uniform. This uniform is in fact an array of lights, to enable the definition of multiple lights.
 A light is declared in python as an instance of the class `Light`, that is simply a container to hold the attributes defining the light. \
 Currently, the class is as follow:
-#align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
+// #align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
 
 With the light passed down to the fragment shader, we simply have to apply a formula (Goureaud, Phong, ...) to obtain the fragment color.
 
 We also provide the support for materials by defining a set of default values for the different variables used during Phong or Goureaud rendering.
 
-= GUI
+== GUI
 // explain user interface choices and navigation
 The graphical user interface (GUI) is composed of a GL display window left and an option panel right.
 #figure(
@@ -515,6 +546,58 @@ The right panel provides the ability for the user to change the scene itself. Th
 
 // Performance and frame rate has not been yet investigated.
 
+= Results
+#let im(path) = { image("images/" + path, width: 100%) }
+== Basic Shapes
+#figure(
+  grid(
+    columns: 2,
+    column-gutter: 1em,
+    im("basic_shapes/triangle.png"), im("basic_shapes/rectangle.png"),
+    im("basic_shapes/pentagon.png"), im("basic_shapes/hexagon.png"),
+    im("basic_shapes/circle.png"), im("basic_shapes/ellipse.png"),
+    im("basic_shapes/trapezoid.png"), im("basic_shapes/star.png"),
+    im("basic_shapes/arrow.png"),
+  ),
+  caption: [2D shapes],
+)
+#figure(
+  grid(
+    columns: 2,
+    column-gutter: 1em,
+    im("basic_shapes/cube.png"), im("basic_shapes/sphere.png"),
+    im("basic_shapes/cylinder.png"), im("basic_shapes/cone.png"),
+    im("basic_shapes/truncated_cone.png"), im("basic_shapes/tetrahedron.png"),
+    im("basic_shapes/torus.png"), im("basic_shapes/prism.png"),
+  ),
+  caption: [3D shapes],
+)
+#figure(
+  grid(
+    columns: 2,
+    im("basic_shapes/surface.png"), im("basic_shapes/surface2.png"),
+  ),
+  caption: [mathematical surfaces],
+)
+== Atoms
+#figure(
+  grid(
+    columns: 2,
+    im("atoms/hydrogen.png"), im("atoms/helium.png"),
+    im("atoms/lithium.png"), im("atoms/carbon.png"),
+    im("atoms/oxygen.png"), im("atoms/aluminium.png"),
+  ),
+  caption: [Atoms],
+)
+
+== Molecules
+
+== Materials
+The @materials displays the variety of materials made available to the user by default. The top row is rendered with the Phong shader, and the bottom row is rendered with Goureaud shader. Each column is a different material used on the same sphere mesh.
+#figure(
+  image("images/materials.png", width: 100%),
+  caption: [Default materials],
+) <materials>
 = Challenges encountered
 The integration of cameras inside the project architecture raised some questions about the project modularity and organisation. Indeed, cameras are needed to represent a 3D scene and one could decide to not provide any support from the library and ask the user to compute the view and projection matrices directly inside the vertex shader.
 This raises concerns about inputs, that then have to pass through uniforms, and about debugging. Indeed, debugging a Python code is much more convenient than debugging one written in GLSL, especially when it comes to matrix computations and hardware compatibility issues.
