@@ -186,8 +186,18 @@ This option toggles back face culling. When rendering a 3D scene, we may want to
   [#image("images/culling_on.png")], [ #image("images/culling_off.png")],
 )
 
+*Rotation slider*:\
+The rotation slider controls the rotation period of the scene around the origin. All objects will be affected by the rotation, but not the lights.
+
 *Performances*:\
 In the top left corner of the application is displayed an frame per second (fps) counter. The higher this value is, the smoother the user will experience the displayed scene. The second value is the bottom 1% of the values over 100 values of fps collected. This gives a measure of the worst performances of the app and completes the mean measure of the fps value.
+
+*Mouse interaction*:\
+The user can interact with the right panel (configuration) by clicking and mouse scrolling. \
+By left clicking and dragging on the left panel, the user can change the camera orientation on the scene.\
+By right clicking and dragging on the left panel, the user can move the camera around the scene.\
+By scrolling on the left panel, the user can zoom or dezoom the camera on the scene.
+
 
 = Software structure
 
@@ -213,6 +223,19 @@ In this project, objects are defined by their attributes:
 - mesh: a mesh composed of vertices, normals and colors, stored in a VAO (Vertex Array Object)
 - program: the program used to render the object. A single program can be used to render several objects.
 - uniforms: as the programs are shared between objects, an objects can redefine some uniforms of the program to adapt the rendering
+
+During the rendering call, each object will select its associated shader program, and upload every uniform associated.
+Some uniforms are shared between every object:
+- `float iTime`: the time since the window opening, in seconds.
+- `vec4 iMouse`: mouse info (xy: current if MLB down, zw: click).
+- `vec2 iResolution`: the dimensions of the display window, in pixels.
+
+And some uniforms are expected by the shader program, but specific to each object:
+- `mat4 model`: the model matrix to place an object in the world
+- `mat4 view`: the tranform matrix from world to camera view
+- `mat4 projection`: the transform matrix from camera view to screen
+- `vec3 view_pos`: the world position of the camera
+
 
 == Scenes <scenes>
 Scenes are a collection of objects. The objects positions in the world are changed thanks to the `model` matrix uniform.
@@ -606,7 +629,7 @@ However, the shaders might need some associated data: uniforms and textures. The
 The lighting of a scene can completely change its final rendering, hence it plays a major role in computer graphics. In this project, we chose to handle scene lights thanks to a data structure that is passed to the fragment shader as a uniform. This uniform is in fact an array of lights, to enable the definition of multiple lights.
 A light is declared in python as an instance of the class `Light`, that is simply a container to hold the attributes defining the light. \
 Currently, the class is as follow:
-// #align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
+#align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
 
 With the light passed down to the fragment shader, we simply have to apply a formula (Goureaud, Phong, ...) to obtain the fragment color.
 
