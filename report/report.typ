@@ -96,7 +96,7 @@
 #show: conf
 
 #cover-page()
-#outline(title: "Table of Contents", indent: auto)
+#outline(title: "Table of Contents", depth: 3, indent: auto)
 #pagebreak()
 
 = Introduction
@@ -105,9 +105,90 @@
   image("images/gui.png", width: 100%),
   caption: [Application at startup],
 )
-This project aims to provide an interface for displaying 3D scenes. A scene is defined as a collection of objects and lights. The user can create its own scenes through code via the interface provided (see @scenes). Some are available by default, allowing the user to visualize atoms following the Bohr model, molecules and some basic shapes in 2D and 3D. The user has the ability to modify the aspect of the objects by modifying the lighting program used, and the materials of objects in the scenes.
+This project aims to provide an application displaying 3D objects using the OpenGL pipeline. The user can interact with a graphical interface to chose which objects are displayed. In particular, basic 2D and 3D objects are defined by default.
+This application can also be used to visualize atoms following the Bohr model and some simple molecules.
+
+To allow the user to further build on the existing project, we provide an interface for the user to create their own scenes (see @scenes). A scene is defined as a collection of objects and lights. The user has the ability to modify the aspect of the objects by changing the lighting program used, as well as the materials used in the scenes.
 
 = User manual, features
+
+The application can be run by executing the command `python3 main.py` at the project root. Once this command is ran, a window appear, composed of 2 panels.
+- Left is the GL display, where the 3D scene is rendered. At startup, it is empty.
+- Right is the control panel, where the user can modify the scenes parameters.
+
+*Scenes*:\
+The first 4 rows allow the user to chose which scene to display.
+The first 3 give the default scenes.
+#table(
+  columns: 3,
+  [*Atoms*], [*Molecules*], [*Basic Shapes*],
+  [Atoms from Hydrogen (1 proton) to Oganesson (118 protons). Displayed following the Bohr model.],
+  [Basic molecules ($H_2O$, $C O_2$), displayed with colored spheres for atoms and cylinders to represent bonds.],
+  [#underline[2D]: triangle, rectangle, pentagon, regular hexagon, circle, ellipse, trapezoid, star, arrow. \
+    #underline[3D]: cube, sphere, cylinder, cone, truncated cone, tetrahedron, torus, prism, mathematical surface],
+)
+The last scene row defines custom scenes. This category will contained every user-defined scene. Some scenes are provided by default as examples.
+
+When the "file" scene of the Custom category is selected, it opens a new box where the user can enter a file path towards an `.obj` file. Once the path is entered, the user must press the Enter key to validate, then the object loaded will be displayed.
+
+*Lighting*:\
+This application defines several programs that are tasked to transform the objects to the screen space. The program actually used to render the scene can be selected Each program will alter the way the objects are displayed on the final screen.
+#table(
+  columns: 2,
+  [*Program*], [*Description*],
+  [flat], [Apply the color of the first vertex of the face to the whole face.],
+  [interpolation], [Apply the color on each vertex of the faces, and interpolate for fragments between face vertices.],
+  [phong],
+  [Apply the Phong shading algorithm to the scene.\ Materials are used on each object to define the specific parameters (ambient_color, k_ambient, k_diffuse, k_specular, shininess).],
+
+  [goureaud],
+  [Apply the Goureaud shading method.\ Materials are used on each object to define the specific parameters (ambient_color, k_ambient, k_diffuse, k_specular, shininess).],
+)
+
+#emph[Note]: see @lighting for more details about the shading algorithms.\
+
+Specific shading programs can be defined by the scenes, but will not be registered in the global selection #emph[Lighting]. These program options are only set at scene selection and cannot be activated after.
+
+*Material*:\
+The material section provides a choice of materials that will be applied to every object in the scene. Some scenes define a different material to each object (for example atom scenes have a metal or gold material for the spheres and a rubber material assigned to the rings). Be aware that selecting a material will assign the choice to every object in the scene.
+
+The default materials are: \
+default, shiny, matte, rubber, metal, gold, copper, ceramic, glass, skin.
+
+This parameter only applies paired with the "phong" and "goureaud" shading programs.
+
+*Number of lights*:\
+This section changes the number of lights. Lights are defined by default and will override any scene-specific lights when changed. The lights are created in a circular shape (see code for more details). \
+
+This parameter only applies paired with the "phong" and "goureaud" shading programs.
+
+*Wireframe*:\
+This option toggles the wireframe view.
+#grid(
+  columns: 2,
+  column-gutter: 1em,
+  [#image("images/wireframe_off.png")], [ #image("images/wireframe_on.png")],
+)
+
+*Texture*: \
+This option toggles the use of texture. Objects may be associated with a texture, and can be rendered this way. When no texture is provided, enabling the option may make the object invisible, or use a previously defined texture.
+#grid(
+  columns: 2,
+  column-gutter: 1em,
+  [#image("images/texture_on.png")], [ #image("images/texture_off.png")],
+)
+
+*Back face culling*:\
+This option toggles back face culling. When rendering a 3D scene, we may want to avoid rendering the face poiting away from the camera because they are not likely to have been designed to be visible from this orientation. By doing so, we cut some calculations and reduce the computation time needed to calculate each frame.
+#grid(
+  columns: 2,
+  column-gutter: 1em,
+  [#image("images/culling_on.png")], [ #image("images/culling_off.png")],
+)
+
+*Performances*:\
+In the top left corner of the application is displayed an frame per second (fps) counter. The higher this value is, the smoother the user will experience the displayed scene. The second value is the bottom 1% of the values over 100 values of fps collected. This gives a measure of the worst performances of the app and completes the mean measure of the fps value.
+
 = Software structure
 
 The software has been structured to ensure modularity and concern separation.
@@ -508,7 +589,7 @@ Note that this implementation can not handle illegal (eg. divide by 0) or limits
 Since the `limx` and `limy` defines a rectangle area and the surface is continuous (by limitations), `uvs` are very simple to map almost 1 to 1
 
 == Shaders
-In a given scene, each object is associated with a shader program. A shader program is created from 2 shader: a vertex shader and a fragment shader. Specifically, when a program is created (in `Pipeline.update_program`), the 2 shader files are uploaded to the GPU before being compiled. They are then linked into a program, and the 2 former shader objects are destroyed. \
+In a given scene, each object is associated with a shader program. A shader program is created from 2 shaders: a vertex shader and a fragment shader. Specifically, when a program is created (in `Pipeline.update_program`), the 2 shader files are uploaded to the GPU before being compiled. They are then linked into a program, and the 2 former shader objects are destroyed. \
 
 However, the shaders might need some associated data: uniforms and textures. The `UManager class` is charged to handle these.
 - #underline[uniforms]: \ #text[
@@ -520,7 +601,7 @@ However, the shaders might need some associated data: uniforms and textures. The
     Currently textures are not supported.
   ]
 
-== Lighting
+== Lighting <lighting>
 
 The lighting of a scene can completely change its final rendering, hence it plays a major role in computer graphics. In this project, we chose to handle scene lights thanks to a data structure that is passed to the fragment shader as a uniform. This uniform is in fact an array of lights, to enable the definition of multiple lights.
 A light is declared in python as an instance of the class `Light`, that is simply a container to hold the attributes defining the light. \
@@ -603,7 +684,11 @@ The right panel provides the ability for the user to change the scene itself. Th
 == Materials
 The @materials displays the variety of materials made available to the user by default. The top row is rendered with the Phong shader, and the bottom row is rendered with Goureaud shader. Each column is a different material used on the same sphere mesh.
 #figure(
-  image("images/materials.png", width: 100%),
+  align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+    "images/materials.png",
+    width: 180%,
+  )))),
+  // image("images/materials.png", width: 100%),
   caption: [Default materials],
 ) <materials>
 = Challenges encountered
