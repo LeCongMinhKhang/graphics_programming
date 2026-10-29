@@ -1,17 +1,12 @@
 import tkinter as tk
+import numpy as np
 from tkinter import ttk
 from OpenGL import GL
 from pyopengltk import OpenGLFrame
-import time
-import sys
-import datetime
-import numpy as np
-import importlib
-import pkgutil
+import time, sys, datetime, importlib, pkgutil, logging
+from PIL import Image, ImageOps
 
 import scenes as scenes_pkg  # the scenes directory
-
-import logging
 
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
@@ -236,9 +231,24 @@ class App(tk.Tk):
         variable=self.rotation_var,
       ),
     )
+    self.table.newRow(
+      self.table.label(text="Take screenshot:"),
+      self.table.button(
+        text = "Save Image",
+        id = "saveImage",
+        command = lambda: self.saveImage(window_size)
+      ),
+    )
     self.after(100, self.viewport.printContext)
     self.protocol("WM_DELETE_WINDOW", self.on_close)
     self.viewport.mainloop()
+
+  def saveImage(self,window_size):
+    data = GL.glReadPixels(0, 0, window_size[0], window_size[1], GL.GL_RGBA, GL.GL_UNSIGNED_BYTE)
+    image = Image.frombytes("RGBA", (window_size[0], window_size[1]), data)
+    image = ImageOps.flip(image) # in my case image is flipped top-bottom for some reason
+    image.save('glutout.png', 'PNG')
+
 
   def on_close(self):
     self.viewport.animate = 0  # stop the redraw loop
