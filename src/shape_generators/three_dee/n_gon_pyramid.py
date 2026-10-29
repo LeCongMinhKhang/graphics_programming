@@ -63,7 +63,7 @@ def generate(
 
 
 def uvTexture(data,height,radius,n):
-  mercatorProjection = tools.uvSlicer(data,[
+  mercatorProjection, groups = tools.uvSlicer(data,[
     {"splits":[0],"tears":[n,n+1]},
   ] + [
     # bottom edge
@@ -71,7 +71,7 @@ def uvTexture(data,height,radius,n):
   ] + [
     # top edge
     {"splits":[n+1],"tears":[i,None]} for i in range(n)
-  ])
+  ],withGroups = True)
   data["uvs"] = np.full((data["vertices"].shape[0],2),[5,5],dtype=np.float32)
   # ratioSide = height/(height+radius)
   ratioBase = radius/(height+radius)
@@ -80,23 +80,23 @@ def uvTexture(data,height,radius,n):
   for i in range(1,n):
     data["uvs"][i]   = [i/n,ratioBase]
     if i < n-1:
-      correctSideBottomEdge = tools.getUvSide(data,mercatorProjection,[n],[i,i+1])
+      correctSideBottomEdge = tools.getUvSide(data,mercatorProjection,[n],[i,i+1],groups)
       data["uvs"][mercatorProjection[n][correctSideBottomEdge]] = [(i+0.5)/n,0]
-      correctSideTopEdge = tools.getUvSide(data,mercatorProjection,[n+1],[i,i+1])
+      correctSideTopEdge = tools.getUvSide(data,mercatorProjection,[n+1],[i,i+1],groups)
       data["uvs"][mercatorProjection[n+1][correctSideTopEdge]] = [(i+0.5)/n,1]
   # left right 
-  leftSide = tools.getUvSide(data,mercatorProjection,[0],[1])
+  leftSide = tools.getUvSide(data,mercatorProjection,[0],[1],groups)
   data["uvs"][mercatorProjection[0][leftSide]] = [0,ratioBase]
-  rightSide = tools.getUvSide(data,mercatorProjection,[0],[n-1])
+  rightSide = tools.getUvSide(data,mercatorProjection,[0],[n-1],groups)
   data["uvs"][mercatorProjection[0][rightSide]] = [1,ratioBase]
 
   # topright bottomright
-  bottomRight = tools.getUvSide(data,mercatorProjection,[n+1],[n-1,mercatorProjection[0][rightSide]])
+  bottomRight = tools.getUvSide(data,mercatorProjection,[n+1],[n-1,0],groups)
   data["uvs"][mercatorProjection[n+1][bottomRight]] = [(n-0.5)/n,1]
-  topRight = tools.getUvSide(data,mercatorProjection,[n],[n-1,mercatorProjection[0][rightSide]])
+  topRight = tools.getUvSide(data,mercatorProjection,[n],[n-1,0],groups)
   data["uvs"][mercatorProjection[n][topRight]] = [(n-0.5)/n,0]
   # topleft bottomleft 
-  topLeft = tools.getUvSide(data,mercatorProjection,[n+1],[n+1,mercatorProjection[0][leftSide]])
+  topLeft = tools.getUvSide(data,mercatorProjection,[n+1],[1,0],groups)
   data["uvs"][mercatorProjection[n+1][topLeft]] = [0.5/n,1]
-  bottomLeft = tools.getUvSide(data,mercatorProjection,[n],[1,mercatorProjection[0][leftSide]])
+  bottomLeft = tools.getUvSide(data,mercatorProjection,[n],[1,0],groups)
   data["uvs"][mercatorProjection[n][bottomLeft]] = [0.5/n,0]

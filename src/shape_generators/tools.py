@@ -50,22 +50,46 @@ def quads2triangles(listOfQuads):
 
 
 # UV-Slicer ############################################
-def getUvSide(data, isTheSame, seamVertices, common):
-  out = set()
+def getUvSide(data, isTheSame, seamVertices, common, withGroups = None):
+  debug = {}
+  debug["seamVertices"] = seamVertices
+  debug["common"] = common
   for v in seamVertices:
     candidateSides = isTheSame[v].keys()
     for cSide in candidateSides:
-      for i in range(data["indices"].shape[0]):
-        if isTheSame[v][cSide] == data["indices"][i]:
+      debug[cSide] = {}
+      if withGroups is not None:
+        edgesOfSide = withGroups[cSide]["v"]
+        debug[cSide]["edgesOfSide"] = edgesOfSide
+        if isinstance(common[0],tuple):
           howMany = len(
-            list(filter(lambda c: c in data["indices"][(i // 3) * 3 : (i // 3) * 3 + 3], common))
+            list(filter(lambda c: c in edgesOfSide , common))
           )
-          if howMany == len(common):
-            out.add(cSide)
-  return list(out)[0]
+          debug[cSide]["howMany"] = howMany
+          if (howMany>0):
+            return cSide
+        else:
+          edgesOfSide = withGroups[cSide]["v"]
+          howMany = len(
+            list(filter(lambda c: c in [list(i)[j] for i in edgesOfSide for j in range(len(i))], common))
+          )
+          debug[cSide]["howMany"] = howMany
+          if howMany>=len(common):
+            return cSide
+      else:
+        for i in range(data["indices"].shape[0]):
+          if isTheSame[v][cSide] == data["indices"][i]:
+            howMany = len(
+              list(filter(lambda c: c in data["indices"][(i // 3) * 3 : (i // 3) * 3 + 3], common))
+            )
+            if howMany == len(common):
+              return cSide
+  logger.error("Can't find the side you want")
+  print(debug)
+  exit(1)
 
 
-def uvSlicer(data, seams, debug=False):
+def uvSlicer(data, seams, debug=False, withGroups = False):
   # there are a few groups of vertices with specific relation to the seam vertices
   # + add1 = vertices that connects to 2 of the seam's to form a face (unknown which side it is)
   # + add2 = when 1 seam vertex connects to 2 non seam vertices to form a face (unknown which side it is)
@@ -249,6 +273,8 @@ def uvSlicer(data, seams, debug=False):
   data["colors"] = colors
   data["indices"] = indices
   dataToNumpyArray(data)
+  if(withGroups):
+    return isTheSame, groups
   return isTheSame
 
 
@@ -387,5 +413,6 @@ def vertexNeighborNormals(data):
   print(f"\tDid {total}/{total} normal calculations")
   logger.debug("Normalizing normals")
   normals = normals / np.linalg.norm(normals, axis=1)[:, np.newaxis]
+  logger.debug("Done normals")
 
   data["normals"] = normals

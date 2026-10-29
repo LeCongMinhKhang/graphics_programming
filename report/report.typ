@@ -692,13 +692,19 @@ The @materials displays the variety of materials made available to the user by d
   caption: [Default materials],
 ) <materials>
 = Challenges encountered
+== Camera
 The integration of cameras inside the project architecture raised some questions about the project modularity and organisation. Indeed, cameras are needed to represent a 3D scene and one could decide to not provide any support from the library and ask the user to compute the view and projection matrices directly inside the vertex shader.
 This raises concerns about inputs, that then have to pass through uniforms, and about debugging. Indeed, debugging a Python code is much more convenient than debugging one written in GLSL, especially when it comes to matrix computations and hardware compatibility issues.
 
 This reasons led us to create the `Camera` class, a pattern providing 3 main functions: `view_matrix`, `_projection_matrix` and `update`. The first 2 return the corresponding matrices and the latter returns an array of uniforms updated with the "projection" and "view" fields.
 
 Then, once a camera implementation is passed to the main program, the user simply has to collect the "view" and "projection" uniforms in the vertex shader to compute the final vertices position.
+== Tools
+As the shape generators were being written, a lot of operations felt like they could be extracted out/become generalized as shared function. This brought in new challenges when thinking about how one would generate normals or generate the uv splicing given any shapes as input, as you can't just hard code the "optimal" solution per shape anymore. 
 
+The `normalsGenerator`, given how it works, has some rendering artifacts depending on specific vertex's configuration, and is also the slowest part of any shape generation steps, which is unideal.
+
+The `uvSlicer` went through countless iteration and bugsfixes and changes to its operation as it was being developped and as needs rising while applying it in uv-mapping the shapes. Original versions of the slicer had failed attempts at optimization of the side assignment and vertex copying to limit the ammount of nested looping that the current working version has. And the amount of effort went into building this tool doesn't justify its usage as a "time saving" shortcut to uv mapping.
 
 = Sources
 The source code for this project can be found in this public Github repository #link("https://github.com/LeCongMinhKhang/graphics_programming").

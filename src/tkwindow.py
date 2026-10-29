@@ -815,7 +815,7 @@ class AppOgl(OpenGLFrame):
       case "surface":
         obj = surface.generate(func=lambda x, y: np.sin(x) + np.sin(y), n=3)
       case "sphere":
-        obj = uv_sphere.generate(n=12)
+        obj = uv_sphere.generate()
       case "torus":
         obj = torus.generate(n=16)
       case _:

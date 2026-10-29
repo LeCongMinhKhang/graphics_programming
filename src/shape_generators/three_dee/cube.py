@@ -42,10 +42,10 @@ def generate(size:  float = 1.0,
   return data
 
 def uvTexture(data):
-  isTheSame = tools.uvSlicer(data,[
+  isTheSame,groups = tools.uvSlicer(data,[
     {"splits":[2,4],"tears":[0,6]},
     {"splits":[3,2,4,5],"tears":[1,7]},
-  ])
+  ],withGroups=True)
   data["uvs"] = np.full((data["vertices"].shape[0],2),[0.0,0.0],dtype=np.float32)
 
   #  y=1     2?--- 4?
@@ -63,23 +63,23 @@ def uvTexture(data):
   data["uvs"][1] = [0.25,0.5]
   data["uvs"][7] = [0.5 ,0.5]
 
-  topSide = tools.getUvSide(data,isTheSame,[2,4],[0,6])
+  topSide = tools.getUvSide(data,isTheSame,[2,4],[0,6],groups)
   data["uvs"][isTheSame[2][topSide]] = [0.25,1.0]
   data["uvs"][isTheSame[4][topSide]] = [0.5 ,1.0]
 
-  leftSide = tools.getUvSide(data,isTheSame,[2,3],[0,1])
+  leftSide = tools.getUvSide(data,isTheSame,[2,3],[0,1],groups)
   data["uvs"][isTheSame[2][leftSide]] = [0.0,0.75]
   data["uvs"][isTheSame[3][leftSide]] = [0.0,0.5 ]
 
-  rightSide = tools.getUvSide(data,isTheSame,[4,5],[6,7])
+  rightSide = tools.getUvSide(data,isTheSame,[4,5],[6,7],groups)
   data["uvs"][isTheSame[4][rightSide]] = [0.75,0.75]
   data["uvs"][isTheSame[5][rightSide]] = [0.75,0.5 ]
 
-  bottomSide = tools.getUvSide(data,isTheSame,[3,5],[1,7])
+  bottomSide = tools.getUvSide(data,isTheSame,[3,5],[1,7],groups)
   data["uvs"][isTheSame[3][bottomSide]] = [0.25,0.25]
   data["uvs"][isTheSame[5][bottomSide]] = [0.5 ,0.25]
 
-  frontSide = tools.getUvSide(data,isTheSame,[2,4],[isTheSame[3][bottomSide],isTheSame[5][bottomSide]])
+  frontSide = tools.getUvSide(data,isTheSame,[2,4],[3,5],groups)
   data["uvs"][isTheSame[2][frontSide]] = [0.25,0.0 ]
   data["uvs"][isTheSame[4][frontSide]] = [0.5 ,0.0 ]
 

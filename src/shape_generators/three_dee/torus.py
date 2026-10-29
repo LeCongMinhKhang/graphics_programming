@@ -55,16 +55,17 @@ def generate(
 def uvTexture(data, ringCount, vertPerRing):
   # me when I box splitter attack:
 
-  verticalSlice = tools.uvSlicer(
+  verticalSlice,vGroup = tools.uvSlicer(
     data,
     [
       {"splits": [v * ringCount for v in range(vertPerRing)] + [0]},
     ],
+    withGroups=True
   )
-  leftSide = tools.getUvSide(data, verticalSlice, [0], [1])
-  rightSide = tools.getUvSide(data, verticalSlice, [0], [ringCount - 1])
+  leftSide = tools.getUvSide(data, verticalSlice, [0], [1], vGroup)
+  rightSide = tools.getUvSide(data, verticalSlice, [0], [ringCount - 1], vGroup)
 
-  horizontalSlice = tools.uvSlicer(
+  horizontalSlice,hGroup = tools.uvSlicer(
     data,
     [
       {
@@ -73,11 +74,12 @@ def uvTexture(data, ringCount, vertPerRing):
         + [verticalSlice[0][rightSide]]
       },
     ],
+    withGroups=True
   )
   # topSide = tools.getUvSide(data,horizontalSlice,[0],[ringCount])
   # bottomSide = tools.getUvSide(data,horizontalSlice,[0],[ringCount*(vertPerRing-1)])
-  topSide = tools.getUvSide(data, horizontalSlice, [0], [ringCount * (vertPerRing - 1)])
-  bottomSide = tools.getUvSide(data, horizontalSlice, [0], [ringCount])
+  topSide = tools.getUvSide(data, horizontalSlice, [0], [ringCount * (vertPerRing - 1)],hGroup)
+  bottomSide = tools.getUvSide(data, horizontalSlice, [0], [ringCount],hGroup)
 
   # sides of uv mapped
   #               -rc+
