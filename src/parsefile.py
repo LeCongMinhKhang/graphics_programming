@@ -1,13 +1,16 @@
 from OpenGL import GL
 import numpy as np
 import os
+from pathlib import Path
 from src.shape_generators import tools
 
 def parseMaterials(path):
   materials = {}
   currentMat = None
-  with open(path) as file:
-    for line in file:
+  file_path = Path(path)
+  if file_path.exists():
+    file = file_path.read_text()
+    for line in file.split("\n"):
       string = line.strip()
       arr = string.split(" ")
       match arr[0]:
@@ -30,18 +33,21 @@ def parseFile(path):
   verticesCount = 0
   tripletHashmap = {}
 
-  with open(path) as file:
+  file_path = Path(path)
+  if file_path.exists():
+    file = file_path.read_text()
     vNone = [None for i in obj["v"][0]] if len(obj["v"]) > 0 else None
     vtNone = [None for i in obj["vt"][0]] if len(obj["vt"]) > 0 else None
     vnNone = [None for i in obj["vn"][0]] if len(obj["vn"]) > 0 else None
     materials = {}
     currentMat = None
-    for line in file:
-      string = line.strip()
+    for line in file.split("\n"):
+      string = " ".join(line.strip().split())
       arr = string.split(" ")
       match arr[0]:
         case "mtllib":
-          materials = parseMaterials(os.path.dirname(path)+f"/{arr[1]}")
+          matFile = " ".join(line.strip().split(" ")[1:])
+          materials = parseMaterials(os.path.dirname(path)+f"/{matFile}")
         case "usemtl":
           currentMat = arr[1]
         case "v":
@@ -49,7 +55,7 @@ def parseFile(path):
           if vNone is None:
             vNone = [None for i in obj["v"][0]] if len(obj["v"]) > 0 else None
         case "vt":
-          obj["vt"].append([float(i) for i in arr[1:]])
+          obj["vt"].append([float(i) for i in arr[1:3]])
           if vtNone is None:
             vtNone = [None for i in obj["vt"][0]] if len(obj["vt"]) > 0 else None
         case "vn":

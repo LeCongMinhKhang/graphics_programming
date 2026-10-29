@@ -1,6 +1,41 @@
 # Assignement 1: Computer Graphics
+## Installation
+From the root directory, install the necessary packages:
+```shell
+pip install -r "_Path_to_requirements.txt"
+```
+## Running the program
+To start the program, from the root directory run:
+```shell
+python app.py
+```
+To start the program already rendering a specific scene, run:
+```shell
+python app.py --init_scene "scene_name_here_example_torus"
+```
+## Quick introduction
+### GUI
+![The GUI](report/images/gui.png)
 
-## Part I: Drawing basic shapes
+The Viewport is on the left hand side, with a fixed width and height
+The FPS (frames per second) and the 1%low (the lowest 1% FPS, ie how stuttery it is) is on the top left of the viewport
+
+The Control Panel is on the right, you may need to expand the window to the right to reveal them.
+
+From top to bottom, we have 4 categories of scenes: Atoms, Molecules, Basic Shapes, and Custom. Select a scene from the drop down next to the category to start rendering them. 
+
+Note that some scenes need a bit of time to build if the shape is complex to generate from code. 
+
+Custom -> file scene instructions will be in the next section
+
+Next, we have a few parameters to tinker with the scenes. If the lighting mode is unwrap, the Rotation speed slider will instead control how unwrapped the shape's texture will be.
+
+### Import files
+When selecting Custom -> file, a new File path entry box appears. Input the path to an `.obj` file and hit `Enter` to parse and render that file. Note that any `.mtl` files that the `.obj` requires will need to be in the same directory as the `.obj` file.
+
+Example files are provided at `inputs/obj` (all except for `inputs/obj/fromWiki.obj`, that is an example file that will not render)
+
+<!-- ## Part I: Drawing basic shapes
 
 ### Default uniforms
 Some uniforms are made available to shaders by default.
@@ -32,30 +67,30 @@ python test/pipeline/lighting/sphere.py  # phong lighting
 ### Modules
 #### Pipeline modules
 - [x] different GL modes
-- [ ] different GL primitives
+- [x] different GL primitives
   - [x] triangles
-  - [ ] segments
-  - [ ] points
-- [ ] textures input
+  - [x] segments
+  - [x] points
+- [x] textures input
 - [x] shaders files support
   - [x] uniforms
 - [x] camera
 - [x] Wireframe mode for visualizing only the edges of the shape.
-- [ ] lighting 
+- [x] lighting 
   - [x] Flat color (single uniform color for the entire object).
-  - [ ] Vertex color interpolation using Gouraud shading.
+  - [x] Vertex color interpolation using Gouraud shading.
   - [x] Phong shading (with per-fragment lighting).
-  - [ ] Texture mapping using external image files provided by the user.
+  - [x] Texture mapping using external image files provided by the user.
   - [x] multiple lights
-  - [ ] directional light
+  - [x] directional light
   - [x] puncual light
 #### GUI modules
-- [ ] toolbar/menus
+- [x] toolbar/menus
 - [x] GL display (rendering loop, GL interface)
 - [x] window 
 - [x] mouse and time support
 - [ ] keyboard interaction
-- [ ] fps
+- [x] fps
 
 ### 2D Shapes
 - [x] triangle
@@ -95,4 +130,4 @@ Textures:
 isTextured is never uploaded for "file" scenes
 ## TODO: 
 Cache uniform locations. glGetUniformLocation with string formatting every frame is slow in Python. Build a dict of locations once after linking the program
-allow per-scene lights definition
+allow per-scene lights definition -->

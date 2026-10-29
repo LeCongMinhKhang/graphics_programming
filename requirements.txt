@@ -1,0 +1,7 @@
+pyopengl
+glfw
+numpy
+opencv4
+pillow
+pyopengltk
+tkinter
