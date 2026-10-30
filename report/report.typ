@@ -634,7 +634,7 @@ However, the shaders might need some associated data: uniforms and textures. The
 The lighting of a scene can completely change its final rendering, hence it plays a major role in computer graphics. In this project, we chose to handle scene lights thanks to a data structure that is passed to the fragment shader as a uniform. This uniform is in fact an array of lights, to enable the definition of multiple lights.
 A light is declared in python as an instance of the class `Light`, that is simply a container to hold the attributes defining the light. \
 Currently, the class is as follow:
-// #align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
+#align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
 
 With the light passed down to the fragment shader, we simply have to apply a formula (Goureaud, Phong, ...) to obtain the fragment color.
 
