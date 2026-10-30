@@ -652,6 +652,8 @@ This panel supports mouse interaction through the use of camera: the user can ch
 
 The right panel provides the ability for the user to change the scene itself. They can select a predefined scene or import an `.obj` file under the "Scene" section. The "Lighting" option apply a given shading program to every object in the scene (some scenes may have objects with different programs). Other options allow the user to change the number of lights, enable wireframe mode or change the rotation speed of the scene.
 
+The GUI window is implemented thanks to the python module Tkinter.
+
 // = Performance
 
 // Performance and frame rate has not been yet investigated.
