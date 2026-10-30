@@ -95,6 +95,11 @@
 
 #show: conf
 
+#let crop(path) = align(center, box(clip: true, width: 100%, height: auto, align(left, image(
+  path,
+  width: 180%,
+))))
+
 #cover-page()
 #outline(title: "Table of Contents", depth: 3, indent: auto)
 #pagebreak()
@@ -339,7 +344,7 @@ f 7//1 8//2 9//3
 f ...
 ```
 Things to note of is that this files contains `vertices`, `uvs`, `normals` with fields starting with `v`, `vt`, `vn`. Also `f` fields denotes `indices`, in the format of having multiple `v/vt/vn` field per vertex index that is in a face, with the indices being 1-indexed.
-Colors are parsed from the `.mtl` files that denotes what material will be applied the next group of faces have.
+Colors are parsed from the `.mtl` files that denotes what material will be applied the next group of faces have. A limitation is that the materials are not applied, only the textures (the materials have to be defined manually).
 The parsing goes as follows:
 - We first parse `v`, `vt`, `vn` into a dictionary `fromFile`.
 - For every index fields we can parse in an `f`, we check if that tripplet exists already in a dictionary `tripplets`:
@@ -629,7 +634,7 @@ However, the shaders might need some associated data: uniforms and textures. The
 The lighting of a scene can completely change its final rendering, hence it plays a major role in computer graphics. In this project, we chose to handle scene lights thanks to a data structure that is passed to the fragment shader as a uniform. This uniform is in fact an array of lights, to enable the definition of multiple lights.
 A light is declared in python as an instance of the class `Light`, that is simply a container to hold the attributes defining the light. \
 Currently, the class is as follow:
-#align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
+// #align(center)[#raw(read("../src/light.py"), lang: "python", block: true)]
 
 With the light passed down to the fragment shader, we simply have to apply a formula (Goureaud, Phong, ...) to obtain the fragment color.
 
@@ -675,15 +680,16 @@ The right panel provides the ability for the user to change the scene itself. Th
     im("basic_shapes/truncated_cone.png"), im("basic_shapes/tetrahedron.png"),
     im("basic_shapes/torus.png"), im("basic_shapes/prism.png"),
   ),
-  caption: [3D shapes],
+  caption: [3D shapes (coloration with normals)],
 )
-#figure(
-  grid(
-    columns: 2,
-    im("basic_shapes/surface.png"), im("basic_shapes/surface2.png"),
-  ),
-  caption: [mathematical surfaces],
+
+#grid(
+  columns: 2,
+  column-gutter: 1em,
+  figure(im("basic_shapes/surface.png"), caption: [mathematical surface:\ $z=sin(x)+sin(y)$]),
+  figure(im("basic_shapes/surface2.png"), caption: [mathematical surface:\ $z=cos(sqrt(x^2+y^2))$]),
 )
+
 == Atoms
 #figure(
   grid(
@@ -711,9 +717,20 @@ The @materials displays the variety of materials made available to the user by d
     "images/materials.png",
     width: 180%,
   )))),
-  // image("images/materials.png", width: 100%),
   caption: [Default materials],
 ) <materials>
+
+== Custom scenes
+Using our scene builder, we can combine several objects imported from different `.obj` files to create a more complex scene. Here, the tea pot, the table and chairs and the plane come from 3 different files. The objects are arranged (scaled, translated and rotated) with their respective model matrix.
+#figure(
+  grid(
+    columns: 2,
+    column-gutter: 1em,
+    crop("images/tea_and_table.png"), crop("images/tea_and_table_wireframe.png"),
+  ),
+  caption: [Complex scene],
+)
+
 = Challenges encountered
 == Camera
 The integration of cameras inside the project architecture raised some questions about the project modularity and organisation. Indeed, cameras are needed to represent a 3D scene and one could decide to not provide any support from the library and ask the user to compute the view and projection matrices directly inside the vertex shader.
@@ -723,7 +740,7 @@ This reasons led us to create the `Camera` class, a pattern providing 3 main fun
 
 Then, once a camera implementation is passed to the main program, the user simply has to collect the "view" and "projection" uniforms in the vertex shader to compute the final vertices position.
 == Tools
-As the shape generators were being written, a lot of operations felt like they could be extracted out/become generalized as shared function. This brought in new challenges when thinking about how one would generate normals or generate the uv splicing given any shapes as input, as you can't just hard code the "optimal" solution per shape anymore. 
+As the shape generators were being written, a lot of operations felt like they could be extracted out/become generalized as shared function. This brought in new challenges when thinking about how one would generate normals or generate the uv splicing given any shapes as input, as you can't just hard code the "optimal" solution per shape anymore.
 
 The `normalsGenerator`, given how it works, has some rendering artifacts depending on specific vertex's configuration, and is also the slowest part of any shape generation steps, which is unideal.
 
