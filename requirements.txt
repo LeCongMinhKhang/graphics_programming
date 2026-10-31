@@ -1,7 +1,6 @@
 pyopengl
 glfw
 numpy
-opencv4
+opencv-python
 pillow
 pyopengltk
-tkinter

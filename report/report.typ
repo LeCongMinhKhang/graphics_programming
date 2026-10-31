@@ -730,7 +730,7 @@ Using our scene builder, we can combine several objects imported from different 
     column-gutter: 1em,
     crop("images/tea_and_table.png"), crop("images/tea_and_table_wireframe.png"),
   ),
-  caption: [Complex scene],
+  caption: [Complex scene (tea and table)],
 )
 
 = Challenges encountered
