@@ -1,17 +1,13 @@
 import tkinter as tk
+import numpy as np
 from tkinter import ttk
 from OpenGL import GL
 from pyopengltk import OpenGLFrame
-import time
-import sys
-import datetime
-import numpy as np
-import importlib
-import pkgutil
+import time, sys, datetime, importlib, pkgutil, logging
+from pathlib import Path
+from PIL import Image, ImageOps
 
 import scenes as scenes_pkg  # the scenes directory
-
-import logging
 
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
@@ -97,6 +93,8 @@ class App(tk.Tk):
     self.viewport.scenes = {k: v for d in self.scenes_types.values() for k, v in d.items()}
 
     # options
+    self.scene_var = tk.StringVar(value = self.toValidFilename(init_scene))
+    self.file_var = tk.StringVar(value = "")
     self.lighting_var = tk.StringVar()
     self.material_var = tk.StringVar()
     self.wireframe_var = tk.BooleanVar()
@@ -236,9 +234,96 @@ class App(tk.Tk):
         variable=self.rotation_var,
       ),
     )
+    self.table.newRow(
+      self.table.label(text="Take screenshot:"),
+      self.table.button(
+        text = "Save Image",
+        id = "saveImage",
+        command = lambda: self.saveImage(window_size)
+      ),
+    )
+    # 1<<0 = scene id
+    # 1<<1 = current time
+    self.outputfile_opt = tk.IntVar(self,value = 0)
+    self.outputfile_prefix = tk.StringVar(self,value="output/")
+    self.outputfile_path = tk.StringVar(self,value ="")
+    self.outputfile_opt.trace_add(mode = 'write',callback = lambda a,b,m: self.setOutputfilePath() if m == 'write' else None)
+    self.bindUpdateFilepath()
+    self.table.newRow(
+      self.table.label(text="\tSave to:"),
+      self.table.label(textvariable = self.outputfile_path),
+    )
+    self.table.newRow(
+      self.table.label(text="\tInclude scene name"),
+      self.table.checkButton(
+        id="outputfile_opt_name",
+        command=lambda : self.outputFileSelect(0),
+        default=False,
+      ),
+    )
+    self.table.newRow(
+      self.table.label(text="\tInclude current time"),
+      self.table.checkButton(
+        id="outputfile_opt_name",
+        command=lambda : self.outputFileSelect(1),
+        default=False,
+      ),
+    )
+    self.table.newRow(
+      self.table.label(text="\tFile prefix: ./"),
+      self.table.entry(
+        id="outputfile_opt_prefix",
+        textvariable=self.outputfile_prefix,
+      ),
+    )
     self.after(100, self.viewport.printContext)
     self.protocol("WM_DELETE_WINDOW", self.on_close)
     self.viewport.mainloop()
+
+  def bindUpdateFilepath(self):
+    doTheUpdate = lambda : self.setOutputfilePath()
+    for i in [self.scene_var,self.outputfile_opt,self.outputfile_prefix]:
+      i.trace_add(mode= 'write', callback = lambda a,b,m: doTheUpdate() if m == 'write' else None)
+    self.file_var.trace_add(mode= 'write', callback = lambda a,b,m: doTheUpdate() if m == 'write' and self.scene_var.get() == 'file'  else None)
+    
+
+  def setOutputfilePath(self):
+    filePath = "./"
+    prefix = self.outputfile_prefix.get()
+    if prefix != '':
+      filePath += prefix
+
+    opt = self.outputfile_opt.get() 
+    l = []
+    if (opt & (1<<1)) > 0:
+      now = datetime.datetime.now()
+      l += [now.strftime("%d.%m.%y-%H.%M.%S")]
+    if (opt & (1<<0)) > 0:
+      l += [self.toValidFilename(self.scene_var.get())]
+
+    filePath += "_".join(l) + ".png"
+    self.outputfile_path.set(filePath)
+  def toValidFilename(self,input):
+    input = input if input is not None else ""
+    invalids = ["\\",  "/",  ":",  "*",  "?",  "\"",  "<",  ">",  "|"]
+    output = input
+    for i in invalids:
+      output = "".join(output.split(i))
+    return output
+    
+  
+  def outputFileSelect(self,offset):
+    opt = self.outputfile_opt.get()
+    self.outputfile_opt.set(opt ^ (1<<offset))
+
+  def saveImage(self,window_size):
+    data = GL.glReadPixels(0, 0, window_size[0], window_size[1], GL.GL_RGBA, GL.GL_UNSIGNED_BYTE)
+    image = Image.frombytes("RGBA", (window_size[0], window_size[1]), data)
+    image = ImageOps.flip(image) # in my case image is flipped top-bottom for some reason
+    path = Path(self.outputfile_path.get())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(path, 'PNG')
+
 
   def on_close(self):
     self.viewport.animate = 0  # stop the redraw loop
@@ -309,6 +394,8 @@ class App(tk.Tk):
     logger.debug("%s scene selected.", value)
     filePath = self.table.get(id="filePath").get() or None
     args = self.viewport.set_scene(value, filePath)
+    self.scene_var.set(value if value is not None else "")
+    self.file_var.set(Path(filePath).stem if filePath is not None else "") 
     self.update_widgets(*args)
 
   def change_lighting(self, event):
