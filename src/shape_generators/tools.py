@@ -13,7 +13,7 @@ def dataStructure():
     "uvs": [],
     "colors": [],  # : np.array((n, 3)) each component must be in [0, 1]
     "normals": [],  # : np.array((n, 3))
-    "mode": GL.GL_TRIANGLES,  # : GL mode, indicating the rendering mode (eg: GL\_TRIANGLES, GL\_TRIANGL_STRIP, ...)
+    "gl_mode": GL.GL_TRIANGLES,  # : GL mode, indicating the rendering mode (eg: GL\_TRIANGLES, GL\_TRIANGL_STRIP, ...)
   }
 
 
@@ -50,7 +50,7 @@ def quads2triangles(listOfQuads):
 
 
 # UV-Slicer ############################################
-def getUvSide(data, isTheSame, seamVertices, common, withGroups = None):
+def getUvSide(data, isTheSame, seamVertices, common, withGroups=None):
   debug = {}
   debug["seamVertices"] = seamVertices
   debug["common"] = common
@@ -61,20 +61,22 @@ def getUvSide(data, isTheSame, seamVertices, common, withGroups = None):
       if withGroups is not None:
         edgesOfSide = withGroups[cSide]["v"]
         debug[cSide]["edgesOfSide"] = edgesOfSide
-        if isinstance(common[0],tuple):
-          howMany = len(
-            list(filter(lambda c: c in edgesOfSide , common))
-          )
+        if isinstance(common[0], tuple):
+          howMany = len(list(filter(lambda c: c in edgesOfSide, common)))
           debug[cSide]["howMany"] = howMany
-          if (howMany>0):
+          if howMany > 0:
             return cSide
         else:
           edgesOfSide = withGroups[cSide]["v"]
           howMany = len(
-            list(filter(lambda c: c in [list(i)[j] for i in edgesOfSide for j in range(len(i))], common))
+            list(
+              filter(
+                lambda c: c in [list(i)[j] for i in edgesOfSide for j in range(len(i))], common
+              )
+            )
           )
           debug[cSide]["howMany"] = howMany
-          if howMany>=len(common):
+          if howMany >= len(common):
             return cSide
       else:
         for i in range(data["indices"].shape[0]):
@@ -85,11 +87,10 @@ def getUvSide(data, isTheSame, seamVertices, common, withGroups = None):
             if howMany == len(common):
               return cSide
   logger.error("Can't find the side you want")
-  print(debug)
   exit(1)
 
 
-def uvSlicer(data, seams, debug=False, withGroups = False):
+def uvSlicer(data, seams, debug=False, withGroups=False):
   # there are a few groups of vertices with specific relation to the seam vertices
   # + add1 = vertices that connects to 2 of the seam's to form a face (unknown which side it is)
   # + add2 = when 1 seam vertex connects to 2 non seam vertices to form a face (unknown which side it is)
@@ -273,7 +274,7 @@ def uvSlicer(data, seams, debug=False, withGroups = False):
   data["colors"] = colors
   data["indices"] = indices
   dataToNumpyArray(data)
-  if(withGroups):
+  if withGroups:
     return isTheSame, groups
   return isTheSame
 
@@ -361,10 +362,10 @@ def moduloColoring(data, **kwargs):
   data["colors"] = data["vertices"] * 500 % 1000 / 1000
 
 
-def hexColoring(data, hex=0xFF69FF, **kwargs):
-  red = float(((hex & 0xFF0000) >> 16) / 0xFF)
-  green = float(((hex & 0x00FF00) >> 8) / 0xFF)
-  blue = float(((hex & 0x0000FF) >> 0) / 0xFF)
+def hexColoring(data, hexa=0xFF69FF, **kwargs):
+  red = float(((hexa & 0xFF0000) >> 16) / 0xFF)
+  green = float(((hexa & 0x00FF00) >> 8) / 0xFF)
+  blue = float(((hexa & 0x0000FF) >> 0) / 0xFF)
   data["colors"] = np.full_like(data["vertices"], [red, green, blue])
 
 

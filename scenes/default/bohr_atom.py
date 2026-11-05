@@ -165,7 +165,7 @@ def scenes(gl_app: AppOgl):
       configuration = electronicConfiguration(electron)
 
       # core
-      obj_f = lambda: uv_sphere.generate(color="hex", hex=0xFF0000)
+      obj_f = lambda: uv_sphere.generate(color="hex", hexa=0xFF0000)
       coreId, _ = self.add_object("atomCore", data_f=obj_f)
       self.update_object(
         coreId, model_matrix=transform.identity(), program_name=self.program_name, material="gold"
@@ -177,7 +177,7 @@ def scenes(gl_app: AppOgl):
 
         # layer
         obj_f = lambda: torus.generate(
-          thickness=0.1, hole_size=2 * (1 + i) - 0.05, color="hex", hex=0xFFFFFF
+          thickness=0.1, hole_size=2 * (1 + i) - 0.05, color="hex", hexa=0xFFFFFF
         )
         layerId, _ = self.add_object(f"layer-{i}", data_f=obj_f)
         self.update_object(
@@ -190,7 +190,7 @@ def scenes(gl_app: AppOgl):
 
         # electrons
         for j in range(len(template)):
-          obj_f = lambda: uv_sphere.generate(n=3, size=0.5, color="hex", hex=0x00FFFF)
+          obj_f = lambda: uv_sphere.generate(n=3, size=0.5, color="hex", hexa=0x00FFFF)
           electronId, _ = self.add_object("electron", data_f=obj_f)
           self.update_object(
             electronId,

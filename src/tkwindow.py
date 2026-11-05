@@ -13,7 +13,7 @@ from src.pipeline import Pipeline
 from src.camera.camera import Camera
 from src.parsefile import parseFile
 
-from src.shape_generators.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow
+from src.shape_generators.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow, frame
 from src.shape_generators.three_dee import cube, cylinder, n_gon_pyramid, surface, uv_sphere, torus
 from src.light import Light
 
@@ -928,6 +928,8 @@ class AppOgl(OpenGLFrame):
         obj = uv_sphere.generate()
       case "torus":
         obj = torus.generate(n=16)
+      case "frame":
+        obj = frame.generate()
       case _:
         if data is None:
           logger.error('trying to create object "%s" but no data given', obj_name)
