@@ -4,10 +4,17 @@ import os
 import sys
 import cv2
 import logging
+import colorsys
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 MAX_LIGHTS = 16
+
+
+def _generate_colors(n, saturation=0.8, value=0.95):
+  return np.array(
+    [colorsys.hsv_to_rgb(i / n, saturation, value) for i in range(n)], dtype=np.float32
+  )
 
 
 class Pipeline:
@@ -23,34 +30,28 @@ class Pipeline:
   # }
   objects = []
   programs = []  # list of programs (<Shader>, <Umanager>)
+  default_programs_id = {}
 
-  def update_program(self, program_id, vert_shader=None, frag_shader=None, static_uniforms=None):
-    """
-    Update a program or create one if program_id is -1
-    :return: program_id (the new one if a program has been created)
-    """
-    if vert_shader is None and frag_shader is None and static_uniforms is None:
-      logger.debug("all data parameter are None, no update performed")
-      return
+  def __init__(self):
+    self.default_programs_id["depth"] = self.create_program(
+      vert_shader="./shaders/interp.vert", frag_shader="./shaders/depth.frag"
+    )  # shader program needed for depth pipeline mode
+    self.default_programs_id["masks"] = self.create_program(
+      vert_shader="./shaders/interp.vert", frag_shader="./shaders/masks.frag"
+    )  # shader program needed for masks pipeline mode
 
-    if program_id == -1:
-      if vert_shader is None or frag_shader is None:
-        logger.error("need both vert_shader and frag_shader files when creating a program")
-        exit(1)
-      self.programs.append((None, None))
-      program_id = len(self.programs) - 1
+  def create_program(self, vert_shader, frag_shader, static_uniforms=None):
+    if vert_shader is None or frag_shader is None:
+      logger.error("need both vert_shader and frag_shader files when creating a program")
+      exit(1)
+    self.programs.append((None, None))
+    program_id = len(self.programs) - 1
 
-    # shaders
-    if vert_shader is not None and frag_shader is not None:
-      logger.debug("Loading shaders")
-      shader = Shader(vert_shader, frag_shader)
-      uma = UManager(shader)
-      self.programs[program_id] = (shader, uma)
-      logger.debug(
-        "Vertex shader: %s loaded\n\tFragment shader: %s loaded", vert_shader, frag_shader
-      )
-    elif vert_shader is not None or frag_shader is not None:
-      logger.debug("both shader files must be given at the same time, no update performed")
+    logger.debug("Loading shaders")
+    shader = Shader(vert_shader, frag_shader)
+    uma = UManager(shader)
+    self.programs[program_id] = (shader, uma)
+    logger.debug("Vertex shader: %s loaded\n\tFragment shader: %s loaded", vert_shader, frag_shader)
 
     # Uniforms
     if static_uniforms is not None:
@@ -72,6 +73,58 @@ class Pipeline:
           logger.debug("Static uniform %s added", uniform["name"])
 
     return program_id
+
+  def update_program(
+    self, program_id, vert_shader=None, frag_shader=None, static_uniforms=None, mode="rgb"
+  ):
+    """
+    Update a program or create one if program_id is -1
+    :return: program_id (the new one if a program has been created)
+    """
+    if vert_shader is None and frag_shader is None and static_uniforms is None:
+      logger.debug("all data parameter are None, no update performed")
+      return
+
+    program_id_original = None
+    if program_id == -1:
+      program_id_original = self.create_program(vert_shader, frag_shader, static_uniforms)
+
+    if mode == "depth":
+      program_id = self.default_programs_id["depth"]
+    else:
+      # shaders
+      if vert_shader is not None and frag_shader is not None:
+        logger.debug("Loading shaders")
+        shader = Shader(vert_shader, frag_shader)
+        uma = UManager(shader)
+        self.programs[program_id] = (shader, uma)
+        logger.debug(
+          "Vertex shader: %s loaded\n\tFragment shader: %s loaded", vert_shader, frag_shader
+        )
+      elif vert_shader is not None or frag_shader is not None:
+        logger.debug("both shader files must be given at the same time, no update performed")
+    shader, uma = self.programs[program_id]
+
+    # Uniforms
+    if static_uniforms is not None:
+      for uniform in static_uniforms:
+        if (
+          type(uniform) is not type({})
+          or "name" not in uniform.keys()
+          or "value" not in uniform.keys()
+          or "type" not in uniform.keys()
+        ):
+          logger.error('static_uniforms vector should contain dict("name": n, "value": v)')
+        else:
+          if "transpose" in uniform.keys():
+            uma.upload_uniform(
+              uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]
+            )
+          else:
+            uma.upload_uniform(uniform["value"], uniform["name"], uniform["type"])
+          logger.debug("Static uniform %s added", uniform["name"])
+
+    return program_id_original or program_id
 
   def add_object(
     self,
@@ -326,7 +379,7 @@ class Pipeline:
       else:
         uma.upload_uniform(uniform["value"], uniform["name"], uniform["type"])
 
-  def draw(self, uniforms=np.array([]), to_draw=None):
+  def draw(self, uniforms=np.array([]), to_draw=None, mode="rgb"):
     """
     Draws objects with OpenGL.
     The objects to be rendered are indexed by loading order.
@@ -334,19 +387,40 @@ class Pipeline:
     :param uniforms: uniforms to upload for this draw call (dynamic ones)
     :param to_draw: index list of objects to be rendered.
                     All objects are rendered when parameter not provided.
+    :param mode: {"rgb", "depth", "masks", "labels"}
     """
 
-    def draw_object(obj):
+    def draw_object(obj, mask_color=None):
       vao = obj["vao"]
-      (shader, uma) = self.programs[obj["program_id"]]
       gl_mode = obj["gl_mode"]
       specific_uniforms = obj["uniforms"]
       indexing = obj["indexing"]
+
+      mask_color_uniform = []
+      match mode:
+        case "rgb":
+          shader, uma = self.programs[obj["program_id"]]
+        case "depth":
+          shader, uma = self.programs[self.default_programs_id[mode]]
+        case "masks":
+          shader, uma = self.programs[self.default_programs_id[mode]]
+          mask_color_uniform = [{"name": "iColor", "value": mask_color, "type": "vec3"}]
+        case "labels":
+          pass
+        case _:
+          logger.error(
+            'unknown pipeline draw mode "%s", should be in {"rgb", "depth", "masks", "labels"}',
+            mode,
+          )
+          exit(1)
       vao.activate()  # bind VAO
       GL.glUseProgram(shader.render_idx)
+
       # upload non-static uniforms
       # specific_uniforms must be also updated for each object
-      for uniform in np.concatenate((uniforms, np.array(specific_uniforms))):
+      for uniform in np.concatenate(
+        (uniforms, np.array(specific_uniforms), np.array(mask_color_uniform))
+      ):
         if "transpose" in uniform.keys():
           uma.upload_uniform(
             uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]
@@ -360,11 +434,13 @@ class Pipeline:
       vao.deactivate()
 
     if to_draw is None:
-      for obj in self.objects:
-        draw_object(obj)
+      mask_colors = _generate_colors(len(self.objects))
+      for obj, mask_color in zip(self.objects, mask_colors):
+        draw_object(obj, mask_color)
     else:
-      for idx in to_draw:
-        draw_object(self.objects[idx])
+      mask_colors = _generate_colors(len(to_draw))
+      for idx, mask_color in zip(to_draw, mask_colors):
+        draw_object(self.objects[idx], mask_color)
 
   def free_object(self, obj_id):
     self.objects[obj_id]["vao"].destroy()

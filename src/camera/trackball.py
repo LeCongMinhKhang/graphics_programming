@@ -48,7 +48,7 @@ class Trackball(Camera):
 
   def _projection_matrix(self, winsize):
     """Projection matrix with z-clipping range adaptive to distance"""
-    z_range = vec(0.1, 100) * self.distance  # proportion to dist
+    z_range = vec(0.1, 2.0) * self.distance  # proportion to dist
     return perspective(35, winsize[0] / winsize[1], *z_range)
 
   def matrix(self):
@@ -88,23 +88,3 @@ class Trackball(Camera):
       view_matrix=self._view_matrix(),
       projection_matrix=self._projection_matrix(winsize),
     )
-
-  # def update(self, uniforms, mouse):
-  #   winsize = self.get_uniform_value(uniforms, "iResolution")
-  #   if (mouse["mb1_x"] == mouse["mb1_down_x"]) and (
-  #     mouse["mb1_y"] == mouse["mb1_down_y"]
-  #   ):  # if new click, reinit old position and dont move
-  #     self.mouse_old = (mouse["mb1_down_x"], mouse["mb1_down_y"])
-  #   else:
-  #     self.drag(self.mouse_old, (mouse["mb1_x"], mouse["mb1_y"]), winsize)
-  #     self.mouse_old = (mouse["mb1_x"], mouse["mb1_y"])
-
-  #   if (mouse["mb2_down"]):
-  #     self.pan()
-  #   self.zoom(mouse["scroll_y"], winsize[1])
-  #   return super().update(
-  #     uniforms,
-  #     mouse,
-  #     view_matrix=self._view_matrix(),
-  #     projection_matrix=self._projection_matrix(winsize),
-  #   )
