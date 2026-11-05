@@ -2,20 +2,24 @@ import numpy as np
 from .. import tools
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-def generate(shape_type:  str   = "circle",
-             size:        float = 1.0, 
-             size_wide:   float = 0.8, 
-             z:           float = 0.0, 
-             color:       str   = "position",
-             hex = 0xff69ff,
-             **kwargs):
-  shape_type = str(shape_type)   
-  size       = float(size) 
-  size_wide  = float(size_wide) 
-  z          = float(z) 
-  color      = str(color)   
+
+def generate(
+  shape_type: str = "circle",
+  size: float = 1.0,
+  size_wide: float = 0.8,
+  z: float = 0.0,
+  color: str = "position",
+  hexa=0xFF69FF,
+  **kwargs,
+):
+  shape_type = str(shape_type)
+  size = float(size)
+  size_wide = float(size_wide)
+  z = float(z)
+  color = str(color)
   for arg in kwargs.keys():
     logger.debug(f"Unused kwarg: {arg} = {kwargs[arg]}")
 
@@ -25,23 +29,28 @@ def generate(shape_type:  str   = "circle",
     print("Warning: invalid size 0")
     size = 0.001
 
-  match(shape_type):
-    case "pentagon": n = 5
-    case "hexagon":  n = 6
-    case "circle":   n = 60
-    case "ellipse":  
+  match shape_type:
+    case "pentagon":
+      n = 5
+    case "hexagon":
+      n = 6
+    case "circle":
       n = 60
-      w_multiplier = size_wide/size
-    case _: n = 3
+    case "ellipse":
+      n = 60
+      w_multiplier = size_wide / size
+    case _:
+      n = 3
 
-  data = tools.ngon_ngonGenerator(n,size,w_multiplier,z)
+  data = tools.ngon_ngonGenerator(n, size, w_multiplier, z)
 
-  data["normals" ] = np.full((data["vertices"].shape[0],3),[0.0,0.0,1.0],dtype=np.float32)
+  data["normals"] = np.full((data["vertices"].shape[0], 3), [0.0, 0.0, 1.0], dtype=np.float32)
 
-  tools.chooseColoring(mode=color)(data, hex=hex)
+  tools.chooseColoring(mode=color)(data, hexa=hexa)
   uvTexture(data)
   tools.dataToNumpyArray(data)
   return data
 
+
 def uvTexture(data):
-  data["uvs"] = data["vertices"][:,:2] / np.max(data["vertices"][:,:2]) / 2 + 0.5
+  data["uvs"] = data["vertices"][:, :2] / np.max(data["vertices"][:, :2]) / 2 + 0.5

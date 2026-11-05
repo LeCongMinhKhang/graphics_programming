@@ -1,4 +1,3 @@
-from numpy import pi, cos, sin
 import numpy as np
 from .. import tools
 
@@ -12,7 +11,7 @@ def generate(
   hole_size: float = 1.0,
   n: int = 8,
   color: str = "normal",
-  hex=0xFFFFFF,
+  hexa=0xFFFFFF,
   **kwargs,
 ):
   thickness = float(thickness)
@@ -45,7 +44,7 @@ def generate(
       listOfQuads.append([index(i + 1, j), index(i + 1, j + 1), index(i, j + 1), index(i, j)])
   data["indices"] = tools.quads2triangles(listOfQuads)
   tools.vertexNeighborNormals(data)
-  tools.chooseColoring(color)(data, hex=hex)
+  tools.chooseColoring(color)(data, hexa=hexa)
   uvTexture(data, ringCount=ringCount, vertPerRing=n)
   tools.dataToNumpyArray(data)
 
@@ -55,17 +54,17 @@ def generate(
 def uvTexture(data, ringCount, vertPerRing):
   # me when I box splitter attack:
 
-  verticalSlice,vGroup = tools.uvSlicer(
+  verticalSlice, vGroup = tools.uvSlicer(
     data,
     [
       {"splits": [v * ringCount for v in range(vertPerRing)] + [0]},
     ],
-    withGroups=True
+    withGroups=True,
   )
   leftSide = tools.getUvSide(data, verticalSlice, [0], [1], vGroup)
   rightSide = tools.getUvSide(data, verticalSlice, [0], [ringCount - 1], vGroup)
 
-  horizontalSlice,hGroup = tools.uvSlicer(
+  horizontalSlice, hGroup = tools.uvSlicer(
     data,
     [
       {
@@ -74,12 +73,12 @@ def uvTexture(data, ringCount, vertPerRing):
         + [verticalSlice[0][rightSide]]
       },
     ],
-    withGroups=True
+    withGroups=True,
   )
   # topSide = tools.getUvSide(data,horizontalSlice,[0],[ringCount])
   # bottomSide = tools.getUvSide(data,horizontalSlice,[0],[ringCount*(vertPerRing-1)])
-  topSide = tools.getUvSide(data, horizontalSlice, [0], [ringCount * (vertPerRing - 1)],hGroup)
-  bottomSide = tools.getUvSide(data, horizontalSlice, [0], [ringCount],hGroup)
+  topSide = tools.getUvSide(data, horizontalSlice, [0], [ringCount * (vertPerRing - 1)], hGroup)
+  bottomSide = tools.getUvSide(data, horizontalSlice, [0], [ringCount], hGroup)
 
   # sides of uv mapped
   #               -rc+

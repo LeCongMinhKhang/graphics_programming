@@ -24,7 +24,7 @@ def scenes(gl_app: AppOgl):
 
     # Carbon
     carbonId, _ = self.add_object(
-      "Carbon", data_f=lambda: uv_sphere.generate(color="hex", hex=0x333333)
+      "Carbon", data_f=lambda: uv_sphere.generate(color="hex", hexa=0x333333)
     )
     self.update_object(
       carbonId,
@@ -34,7 +34,7 @@ def scenes(gl_app: AppOgl):
     )
 
     # Oxygen1
-    obj = lambda: uv_sphere.generate(color="hex", size=0.75, hex=0xFF0000)
+    obj = lambda: uv_sphere.generate(color="hex", size=0.75, hexa=0xFF0000)
     oxygen1Id, _ = self.add_object("Oxide", data_f=obj)
     self.update_object(
       oxygen1Id,
@@ -52,7 +52,7 @@ def scenes(gl_app: AppOgl):
     )
 
     # Bond1
-    obj = lambda: cylinder.generate(color="hex", radius=0.1, height=4, hex=0xFFFFFF)
+    obj = lambda: cylinder.generate(color="hex", radius=0.1, height=4, hexa=0xFFFFFF)
     bond1Id, _ = self.add_object("Bond", data_f=obj)
     self.update_object(
       bond1Id,
@@ -76,14 +76,14 @@ def scenes(gl_app: AppOgl):
 
     # Oxygen
     oxygenId, _ = self.add_object(
-      "Monoxide", data_f=lambda: uv_sphere.generate(color="hex", hex=0xFF0000)
+      "Monoxide", data_f=lambda: uv_sphere.generate(color="hex", hexa=0xFF0000)
     )
     self.update_object(
       oxygenId, model_matrix=transform.identity(), program_name=self.program_name, material="shiny"
     )
 
     # Hidrogen1
-    obj = lambda: uv_sphere.generate(color="hex", size=0.75, hex=0xFFFFFF)
+    obj = lambda: uv_sphere.generate(color="hex", size=0.75, hexa=0xFFFFFF)
     oxygen1Id, _ = self.add_object("Dihydrogen", data_f=obj)
     self.update_object(
       oxygen1Id,
@@ -101,7 +101,7 @@ def scenes(gl_app: AppOgl):
     )
 
     # Bond1
-    obj = lambda: cylinder.generate(color="hex", radius=0.1, height=2, hex=0xFFFFFF)
+    obj = lambda: cylinder.generate(color="hex", radius=0.1, height=2, hexa=0xFFFFFF)
     bond1Id, _ = self.add_object("BondH2o", data_f=obj)
     self.update_object(
       bond1Id,

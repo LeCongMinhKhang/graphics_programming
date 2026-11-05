@@ -13,7 +13,7 @@ from src.pipeline import Pipeline
 from src.camera.camera import Camera
 from src.parsefile import parseFile
 
-from src.shape_generators.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow
+from src.shape_generators.two_dee import triangle, trapezoid, rectangle, star, n_gon, arrow, frame
 from src.shape_generators.three_dee import cube, cylinder, n_gon_pyramid, surface, uv_sphere, torus
 from src.light import Light
 
@@ -93,8 +93,8 @@ class App(tk.Tk):
     self.viewport.scenes = {k: v for d in self.scenes_types.values() for k, v in d.items()}
 
     # options
-    self.scene_var = tk.StringVar(value = self.toValidFilename(init_scene))
-    self.file_var = tk.StringVar(value = "")
+    self.scene_var = tk.StringVar(value=self.toValidFilename(init_scene))
+    self.file_var = tk.StringVar(value="")
     self.lighting_var = tk.StringVar()
     self.material_var = tk.StringVar()
     self.wireframe_var = tk.BooleanVar()
@@ -102,6 +102,7 @@ class App(tk.Tk):
     self.backface_culling_var = tk.BooleanVar()
     self.rotation_var = tk.DoubleVar()
     self.nb_lights_var = tk.IntVar()
+    self.pipeline_mode_var = tk.StringVar()
 
     # UI definition
     self.sidebar = ScrollableList(self)
@@ -237,27 +238,27 @@ class App(tk.Tk):
     self.table.newRow(
       self.table.label(text="Take screenshot:"),
       self.table.button(
-        text = "Save Image",
-        id = "saveImage",
-        command = lambda: self.saveImage(window_size)
+        text="Save Image", id="saveImage", command=lambda: self.saveImage(window_size)
       ),
     )
     # 1<<0 = scene id
     # 1<<1 = current time
-    self.outputfile_opt = tk.IntVar(self,value = 0)
-    self.outputfile_prefix = tk.StringVar(self,value="output/")
-    self.outputfile_path = tk.StringVar(self,value ="")
-    self.outputfile_opt.trace_add(mode = 'write',callback = lambda a,b,m: self.setOutputfilePath() if m == 'write' else None)
+    self.outputfile_opt = tk.IntVar(self, value=0)
+    self.outputfile_prefix = tk.StringVar(self, value="output/")
+    self.outputfile_path = tk.StringVar(self, value="")
+    self.outputfile_opt.trace_add(
+      mode="write", callback=lambda a, b, m: self.setOutputfilePath() if m == "write" else None
+    )
     self.bindUpdateFilepath()
     self.table.newRow(
       self.table.label(text="\tSave to:"),
-      self.table.label(textvariable = self.outputfile_path),
+      self.table.label(textvariable=self.outputfile_path),
     )
     self.table.newRow(
       self.table.label(text="\tInclude scene name"),
       self.table.checkButton(
         id="outputfile_opt_name",
-        command=lambda : self.outputFileSelect(0),
+        command=lambda: self.outputFileSelect(0),
         default=False,
       ),
     )
@@ -265,7 +266,7 @@ class App(tk.Tk):
       self.table.label(text="\tInclude current time"),
       self.table.checkButton(
         id="outputfile_opt_name",
-        command=lambda : self.outputFileSelect(1),
+        command=lambda: self.outputFileSelect(1),
         default=False,
       ),
     )
@@ -276,54 +277,69 @@ class App(tk.Tk):
         textvariable=self.outputfile_prefix,
       ),
     )
+    self.table.newRow(
+      self.table.label(text="Render mode:"),
+      self.table.comboBox(
+        id="pipeline_mode",
+        values=["rgb", "depth", "masks", "labels"],
+        default=0,
+        state="readonly",
+        textvariable=self.pipeline_mode_var,
+        command=self.change_pipeline_mode,
+      ),
+    )
+
     self.after(100, self.viewport.printContext)
     self.protocol("WM_DELETE_WINDOW", self.on_close)
     self.viewport.mainloop()
 
   def bindUpdateFilepath(self):
-    doTheUpdate = lambda : self.setOutputfilePath()
-    for i in [self.scene_var,self.outputfile_opt,self.outputfile_prefix]:
-      i.trace_add(mode= 'write', callback = lambda a,b,m: doTheUpdate() if m == 'write' else None)
-    self.file_var.trace_add(mode= 'write', callback = lambda a,b,m: doTheUpdate() if m == 'write' and self.scene_var.get() == 'file'  else None)
-    
+    doTheUpdate = lambda: self.setOutputfilePath()
+    for i in [self.scene_var, self.outputfile_opt, self.outputfile_prefix]:
+      i.trace_add(mode="write", callback=lambda a, b, m: doTheUpdate() if m == "write" else None)
+    self.file_var.trace_add(
+      mode="write",
+      callback=lambda a, b, m: (
+        doTheUpdate() if m == "write" and self.scene_var.get() == "file" else None
+      ),
+    )
 
   def setOutputfilePath(self):
     filePath = "./"
     prefix = self.outputfile_prefix.get()
-    if prefix != '':
+    if prefix != "":
       filePath += prefix
 
-    opt = self.outputfile_opt.get() 
+    opt = self.outputfile_opt.get()
     l = []
-    if (opt & (1<<1)) > 0:
+    if (opt & (1 << 1)) > 0:
       now = datetime.datetime.now()
       l += [now.strftime("%d.%m.%y-%H.%M.%S")]
-    if (opt & (1<<0)) > 0:
+    if (opt & (1 << 0)) > 0:
       l += [self.toValidFilename(self.scene_var.get())]
 
     filePath += "_".join(l) + ".png"
     self.outputfile_path.set(filePath)
-  def toValidFilename(self,input):
+
+  def toValidFilename(self, input):
     input = input if input is not None else ""
-    invalids = ["\\",  "/",  ":",  "*",  "?",  "\"",  "<",  ">",  "|"]
+    invalids = ["\\", "/", ":", "*", "?", '"', "<", ">", "|"]
     output = input
     for i in invalids:
       output = "".join(output.split(i))
     return output
-    
-  
-  def outputFileSelect(self,offset):
-    opt = self.outputfile_opt.get()
-    self.outputfile_opt.set(opt ^ (1<<offset))
 
-  def saveImage(self,window_size):
+  def outputFileSelect(self, offset):
+    opt = self.outputfile_opt.get()
+    self.outputfile_opt.set(opt ^ (1 << offset))
+
+  def saveImage(self, window_size):
     data = GL.glReadPixels(0, 0, window_size[0], window_size[1], GL.GL_RGBA, GL.GL_UNSIGNED_BYTE)
     image = Image.frombytes("RGBA", (window_size[0], window_size[1]), data)
-    image = ImageOps.flip(image) # in my case image is flipped top-bottom for some reason
+    image = ImageOps.flip(image)  # in my case image is flipped top-bottom for some reason
     path = Path(self.outputfile_path.get())
     path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(path, 'PNG')
-
+    image.save(path, "PNG")
 
   def on_close(self):
     self.viewport.animate = 0  # stop the redraw loop
@@ -395,7 +411,7 @@ class App(tk.Tk):
     filePath = self.table.get(id="filePath").get() or None
     args = self.viewport.set_scene(value, filePath)
     self.scene_var.set(value if value is not None else "")
-    self.file_var.set(Path(filePath).stem if filePath is not None else "") 
+    self.file_var.set(Path(filePath).stem if filePath is not None else "")
     self.update_widgets(*args)
 
   def change_lighting(self, event):
@@ -407,6 +423,11 @@ class App(tk.Tk):
     value = event.widget.get()
     logger.debug("%s material selected.", value)
     self.viewport.select_material(value)
+
+  def change_pipeline_mode(self, event):
+    value = event.widget.get()
+    logger.debug("%s pipeline mode selected", value)
+    self.viewport.pipeline_mode = value
 
   def change_rotation(self, _):
     speed = self.rotation_var.get()
@@ -491,6 +512,7 @@ class AppOgl(OpenGLFrame):
     self.func = func
     self.init_scene = init_scene
     self.scenes = {}
+    self.pipeline_mode = "rgb"
 
     self.objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
     self.objects_rendered = (
@@ -514,7 +536,7 @@ class AppOgl(OpenGLFrame):
       "scroll_delta_x": 0.0,
       "scroll_delta_y": 0.0,
     }
-    self.pipeline = Pipeline()
+    self.pipeline = None
     self.programs = {
       # "unwrap": -1,
       "flat": -1,
@@ -737,6 +759,7 @@ class AppOgl(OpenGLFrame):
     self.mouse["scroll_delta_y"] = yoffset
 
   def initgl(self):
+    self.pipeline = Pipeline()
     """Initalize gl states when the frame is created"""
     GL.glEnable(GL.GL_DEPTH_TEST)  # enable depth test
     GL.glDepthFunc(GL.GL_LESS)  # default; fragment passes if depth < stored depth
@@ -828,7 +851,7 @@ class AppOgl(OpenGLFrame):
           logger.error('program "%s" not recognized', name)
           exit(1)
     program_id = self.pipeline.update_program(
-      program_id, vert_shader=vert_shader, frag_shader=frag_shader
+      program_id, vert_shader=vert_shader, frag_shader=frag_shader, mode=self.pipeline_mode
     )
     self.programs[name] = program_id
     logger.debug("%s program created", name)
@@ -905,6 +928,8 @@ class AppOgl(OpenGLFrame):
         obj = uv_sphere.generate()
       case "torus":
         obj = torus.generate(n=16)
+      case "frame":
+        obj = frame.generate()
       case _:
         if data is None:
           logger.error('trying to create object "%s" but no data given', obj_name)
@@ -1071,7 +1096,7 @@ class AppOgl(OpenGLFrame):
     uniforms = self.cam.update(
       uniforms=np.concatenate((self.default_static_uniforms, uniforms)), mouse=self.mouse
     )
-    self.pipeline.draw(uniforms=uniforms, to_draw=self.objects_rendered)
+    self.pipeline.draw(uniforms=uniforms, to_draw=self.objects_rendered, mode=self.pipeline_mode)
 
 
 def display(init_scene=None, window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
