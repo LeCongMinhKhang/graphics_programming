@@ -4,17 +4,12 @@ import os
 import sys
 import cv2
 import logging
-import colorsys
 from pathlib import Path
+
+from src.tools import generate_colors
 
 logger = logging.getLogger(__name__)
 MAX_LIGHTS = 16
-
-
-def _generate_colors(n, saturation=0.8, value=0.95):
-  return np.array(
-    [colorsys.hsv_to_rgb(i / n, saturation, value) for i in range(n)], dtype=np.float32
-  )
 
 
 class Pipeline:
@@ -398,15 +393,15 @@ class Pipeline:
 
       mask_color_uniform = []
       match mode:
-        case "rgb":
+        case "rgb" | "labels":
           shader, uma = self.programs[obj["program_id"]]
         case "depth":
           shader, uma = self.programs[self.default_programs_id[mode]]
         case "masks":
           shader, uma = self.programs[self.default_programs_id[mode]]
           mask_color_uniform = [{"name": "iColor", "value": mask_color, "type": "vec3"}]
-        case "labels":
-          pass
+        # case "labels":
+        #   shader, uma = self.programs[self.default_programs_id["interpolation"]]
         case _:
           logger.error(
             'unknown pipeline draw mode "%s", should be in {"rgb", "depth", "masks", "labels"}',
@@ -434,11 +429,11 @@ class Pipeline:
       vao.deactivate()
 
     if to_draw is None:
-      mask_colors = _generate_colors(len(self.objects))
+      mask_colors = generate_colors(len(self.objects))
       for obj, mask_color in zip(self.objects, mask_colors):
         draw_object(obj, mask_color)
     else:
-      mask_colors = _generate_colors(len(to_draw))
+      mask_colors = generate_colors(len(to_draw))
       for idx, mask_color in zip(to_draw, mask_colors):
         draw_object(self.objects[idx], mask_color)
 
@@ -456,8 +451,78 @@ class Pipeline:
         shader.destroy()
     self.objects.clear()
     self.programs.clear()
+    self._free_offscreen()
     UManager.destroy_textures()
     logger.debug("Allocated buffers freed")
+
+  def _ensure_offscreen(self, width, height, float_color=False):
+    key = (width, height, float_color)
+    if getattr(self, "_fbo_key", None) == key:
+      return
+    self._free_offscreen()
+
+    internal = GL.GL_RGBA32F if float_color else GL.GL_RGBA8
+    self._color_rb = GL.glGenRenderbuffers(1)
+    GL.glBindRenderbuffer(GL.GL_RENDERBUFFER, self._color_rb)
+    GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, internal, width, height)
+
+    self._depth_rb = GL.glGenRenderbuffers(1)
+    GL.glBindRenderbuffer(GL.GL_RENDERBUFFER, self._depth_rb)
+    GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_DEPTH_COMPONENT24, width, height)
+
+    self._fbo = GL.glGenFramebuffers(1)
+    GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self._fbo)
+    GL.glFramebufferRenderbuffer(
+      GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_RENDERBUFFER, self._color_rb
+    )
+    GL.glFramebufferRenderbuffer(
+      GL.GL_FRAMEBUFFER, GL.GL_DEPTH_ATTACHMENT, GL.GL_RENDERBUFFER, self._depth_rb
+    )
+    if GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) != GL.GL_FRAMEBUFFER_COMPLETE:
+      logger.error("offscreen framebuffer incomplete")
+      exit(1)
+    self._fbo_key = key
+
+  def _free_offscreen(self):
+    if getattr(self, "_fbo_key", None) is None:
+      return
+    GL.glDeleteFramebuffers(1, [self._fbo])
+    GL.glDeleteRenderbuffers(2, [self._color_rb, self._depth_rb])
+    self._fbo_key = None
+
+  def render_to_array(self, uniforms, to_draw, mode="rgb", size=(640, 480), float_color=False):
+    """Render <to_draw> objects offscreen and return an (h, w, 4) array, top row first."""
+    width, height = size
+
+    # save state (tkinter's default framebuffer is not always 0)
+    prev_fbo = GL.glGetIntegerv(GL.GL_FRAMEBUFFER_BINDING)
+    prev_viewport = GL.glGetIntegerv(GL.GL_VIEWPORT)
+    prev_clear = GL.glGetFloatv(GL.GL_COLOR_CLEAR_VALUE)
+    # print(prev_fbo, prev_viewport, prev_clear)
+
+    self._ensure_offscreen(width, height, float_color)
+
+    try:
+      GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self._fbo)
+      GL.glViewport(0, 0, width, height)
+      GL.glClearColor(0, 0, 0, 0)
+      GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+
+      self.draw(uniforms=uniforms, to_draw=to_draw, mode=mode)
+
+      GL.glPixelStorei(GL.GL_PACK_ALIGNMENT, 1)
+      if float_color:
+        raw = GL.glReadPixels(0, 0, width, height, GL.GL_RGBA, GL.GL_FLOAT)
+        img = np.frombuffer(raw, dtype=np.float32)
+      else:
+        raw = GL.glReadPixels(0, 0, width, height, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE)
+        img = np.frombuffer(raw, dtype=np.uint8)
+      img = img.reshape(height, width, 4)
+      return np.flipud(img).copy()  # OpenGL is bottom-up
+    finally:
+      GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, int(prev_fbo))
+      GL.glViewport(*[int(v) for v in prev_viewport])
+      GL.glClearColor(*prev_clear)
 
 
 class VAO(object):
@@ -752,3 +817,50 @@ class Shader:
       logger.error("Compile failed for %s\n%s\n%s" % (shader_type, log, src))
       sys.exit(1)
     return shader
+
+
+class Overlay:
+  def __init__(self, pipeline):
+    self.pipeline = pipeline
+    self.prog = pipeline.create_program("./shaders/quad.vert", "./shaders/quad.frag")
+    self.vao = GL.glGenVertexArrays(1)  # core profile needs a VAO even with no attributes
+    self.tex = GL.glGenTextures(1)
+    self.size = None
+
+  def draw(self, rgba):
+    h, w, _ = rgba.shape
+    shader, _ = self.pipeline.programs[self.prog]
+
+    GL.glActiveTexture(GL.GL_TEXTURE15)  # a high unit, to avoid colliding with UManager's textures
+    GL.glBindTexture(GL.GL_TEXTURE_2D, self.tex)
+    GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
+    if self.size != (w, h):  # (re)allocate only on resize
+      GL.glTexImage2D(
+        GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8, w, h, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, rgba
+      )
+      GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST)
+      GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST)
+      self.size = (w, h)
+    else:
+      GL.glTexSubImage2D(GL.GL_TEXTURE_2D, 0, 0, 0, w, h, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, rgba)
+
+    GL.glUseProgram(shader.render_idx)
+    GL.glUniform1i(GL.glGetUniformLocation(shader.render_idx, "overlay"), 15)
+
+    depth_on = GL.glIsEnabled(GL.GL_DEPTH_TEST)
+    cull_on = GL.glIsEnabled(GL.GL_CULL_FACE)
+    GL.glDisable(GL.GL_DEPTH_TEST)
+    GL.glDisable(GL.GL_CULL_FACE)
+    GL.glEnable(GL.GL_BLEND)
+    GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
+
+    GL.glBindVertexArray(self.vao)
+    GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
+    GL.glBindVertexArray(0)
+
+    GL.glDisable(GL.GL_BLEND)
+    if depth_on:
+      GL.glEnable(GL.GL_DEPTH_TEST)
+    if cull_on:
+      GL.glEnable(GL.GL_CULL_FACE)
+    GL.glActiveTexture(GL.GL_TEXTURE0)
