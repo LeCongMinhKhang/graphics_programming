@@ -69,7 +69,6 @@ class Trackball(Camera):
 
   def update(self, uniforms, mouse):
     winsize = self.get_uniform_value(uniforms, "iResolution")
-
     if mouse["mb1_down"] or mouse["mb2_down"]:
       if (mouse["mb_x"] == mouse["mb_press_x"]) and (mouse["mb_y"] == mouse["mb_press_y"]):
         # if new click, reinit old position and dont move
