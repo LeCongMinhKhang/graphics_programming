@@ -10,7 +10,7 @@ from PIL import Image, ImageOps
 import scenes as scenes_pkg  # the scenes directory
 
 from src.tools import get_bounding_box, draw_bounding_box, generate_colors, build_overlay
-from src.pipeline import Pipeline, Overlay
+from src.pipeline import Pipeline
 from src.camera.camera import Camera
 from src.parsefile import parseFile
 
@@ -244,7 +244,7 @@ class App(tk.Tk):
     )
     # 1<<0 = scene id
     # 1<<1 = current time
-    self.outputfile_opt = tk.IntVar(self, value=0)
+    self.outputfile_opt = tk.IntVar(self, value=1)
     self.outputfile_prefix = tk.StringVar(self, value="output/")
     self.outputfile_path = tk.StringVar(self, value="")
     self.outputfile_opt.trace_add(
@@ -260,7 +260,7 @@ class App(tk.Tk):
       self.table.checkButton(
         id="outputfile_opt_name",
         command=lambda: self.outputFileSelect(0),
-        default=False,
+        default=True,
       ),
     )
     self.table.newRow(
@@ -759,7 +759,6 @@ class AppOgl(OpenGLFrame):
 
   def initgl(self):
     self.pipeline = Pipeline()
-    self.overlay = Overlay(self.pipeline)
     """Initalize gl states when the frame is created"""
     GL.glEnable(GL.GL_DEPTH_TEST)  # enable depth test
     GL.glDepthFunc(GL.GL_LESS)  # default; fragment passes if depth < stored depth
@@ -1115,7 +1114,7 @@ class AppOgl(OpenGLFrame):
         # plt.imshow(frame_array)
         # plt.show()
       colors = generate_colors(len(bounding_boxes))
-      self.overlay.draw(build_overlay(size, bounding_boxes, colors))
+      self.pipeline.draw_overlay(build_overlay(size, bounding_boxes, colors))
 
 
 def display(init_scene=None, window_size=(640, 480), camera=Camera, lights=None, wireframe=False):

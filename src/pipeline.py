@@ -34,6 +34,10 @@ class Pipeline:
     self.default_programs_id["masks"] = self.create_program(
       vert_shader="./shaders/interp.vert", frag_shader="./shaders/masks.frag"
     )  # shader program needed for masks pipeline mode
+    self.default_programs_id["overlay"] = self.create_program(
+      vert_shader="./shaders/quad.vert", frag_shader="./shaders/quad.frag"
+    )  # shader program needed for masks pipeline mode
+    self.empty_vao = GL.glGenVertexArrays(1)  # need a vao without attributes for overlay drawings
 
   def create_program(self, vert_shader, frag_shader, static_uniforms=None):
     if vert_shader is None or frag_shader is None:
@@ -524,6 +528,30 @@ class Pipeline:
       GL.glViewport(*[int(v) for v in prev_viewport])
       GL.glClearColor(*prev_clear)
 
+  def draw_overlay(self, rgba):
+    shader, uma = self.programs[self.default_programs_id["overlay"]]
+
+    # setup overlay texture
+    uma.bind_texture("overlay", "overlay", rgba, update=True)
+    GL.glUseProgram(shader.render_idx)
+    depth_on = GL.glIsEnabled(GL.GL_DEPTH_TEST)
+    cull_on = GL.glIsEnabled(GL.GL_CULL_FACE)
+    GL.glDisable(GL.GL_DEPTH_TEST)
+    GL.glDisable(GL.GL_CULL_FACE)
+    GL.glEnable(GL.GL_BLEND)
+    GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
+
+    GL.glBindVertexArray(self.empty_vao)
+    GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
+    GL.glBindVertexArray(0)
+
+    GL.glDisable(GL.GL_BLEND)
+    if depth_on:
+      GL.glEnable(GL.GL_DEPTH_TEST)
+    if cull_on:
+      GL.glEnable(GL.GL_CULL_FACE)
+    GL.glActiveTexture(GL.GL_TEXTURE0)
+
 
 class VAO(object):
   # consider dropping this and getting the info from the buffers themselves
@@ -608,36 +636,54 @@ class UManager(object):
     cls.textures.clear()
 
   @classmethod
-  def setup_texture(cls, path):
+  def setup_texture(cls, path, image_array=None, update=False):
     """
     Add texture from <path> in the UManager.textures global list.
     :return: texture dictionary (see UManager.textures for the content)
     """
-    # deduplication: same image path = same texture, same unit
+    texture_id = None
+    unit = None
+    new_texture = True
     for t in cls.textures:
       if t["path"] == path:
-        return t
+        texture_id = t["id"]
+        unit = t["unit"]
+        new_texture = False
+        if not update:
+          return t
+        break
 
-    unit = len(cls.textures)
-    if unit >= GL.glGetIntegerv(GL.GL_MAX_TEXTURE_IMAGE_UNITS):
-      logger.error(f"out of texture units ({unit})")
-      exit(1)
+    if new_texture:
+      unit = len(cls.textures)
+      if unit >= GL.glGetIntegerv(GL.GL_MAX_TEXTURE_IMAGE_UNITS):
+        logger.error(f"out of texture units ({unit})")
+        exit(1)
 
     GL.glActiveTexture(GL.GL_TEXTURE0 + unit)
-    tex_id = UManager.create_texture(path)
-    GL.glBindTexture(GL.GL_TEXTURE_2D, tex_id)
+    texture_id = UManager.create_texture(path, image_array, texture_id)
 
-    entry = {"path": path, "id": tex_id, "unit": unit}
-    cls.textures.append(entry)
+    entry = {"path": path, "id": texture_id, "unit": unit}
+    if new_texture:
+      cls.textures.append(entry)
     return entry
 
   @staticmethod
-  def create_texture(image_file):
-    """GPU-wide part: load the image and upload it as a texture object.
-    Independent of any shader program. Returns the texture id."""
-    rgba_image = UManager.load_texture(image_file)
+  def create_texture(image_path, image_array=None, texture_id=None):
+    """
+    GPU-wide part: load the image and upload it as a texture object.
+    Independent of any shader program. Returns the texture id.
+    If image_array is not None, image_path will be used as texture name.
+    :param texture_id: if not None, updates the texture
+    """
+    if image_array is not None:
+      rgba_image = image_array
+    else:
+      rgba_image = UManager.load_texture(image_path)
 
-    texture_id = GL.glGenTextures(1)
+    if texture_id is None:
+      texture_id = GL.glGenTextures(1)
+      logger.debug("new texture created")
+
     GL.glBindTexture(GL.GL_TEXTURE_2D, texture_id)
 
     GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
@@ -655,7 +701,6 @@ class UManager(object):
     GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
     GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
 
-    logger.debug("texture uploaded to the GPU")
     return texture_id
 
   @staticmethod
@@ -674,23 +719,13 @@ class UManager(object):
     img = cv2.flip(img, 0)  # opengl convention
     return np.ascontiguousarray(img)
 
-  def bind_texture(self, sampler_name, path):
+  def bind_texture(self, sampler_name, path, image_array=None, update=False):
     """Shader part: attach an existing texture to a unit and point this
     program's sampler uniform at that unit."""
-    exists = False
-    texture_id = -1
-    texture_unit = -1
-    for texture in UManager.textures:
-      if texture["path"] == path:
-        texture_id = texture["id"]
-        texture_unit = texture["unit"]
-        exists = True
-        break
 
-    if not exists:
-      texture = UManager.setup_texture(path)
-      texture_id = texture["id"]
-      texture_unit = texture["unit"]
+    texture = UManager.setup_texture(path, image_array, update)
+    texture_id = texture["id"]
+    texture_unit = texture["unit"]
 
     GL.glUseProgram(self.shader.render_idx)  # glUniform1i acts on the current program
 
@@ -817,50 +852,3 @@ class Shader:
       logger.error("Compile failed for %s\n%s\n%s" % (shader_type, log, src))
       sys.exit(1)
     return shader
-
-
-class Overlay:
-  def __init__(self, pipeline):
-    self.pipeline = pipeline
-    self.prog = pipeline.create_program("./shaders/quad.vert", "./shaders/quad.frag")
-    self.vao = GL.glGenVertexArrays(1)  # core profile needs a VAO even with no attributes
-    self.tex = GL.glGenTextures(1)
-    self.size = None
-
-  def draw(self, rgba):
-    h, w, _ = rgba.shape
-    shader, _ = self.pipeline.programs[self.prog]
-
-    GL.glActiveTexture(GL.GL_TEXTURE15)  # a high unit, to avoid colliding with UManager's textures
-    GL.glBindTexture(GL.GL_TEXTURE_2D, self.tex)
-    GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
-    if self.size != (w, h):  # (re)allocate only on resize
-      GL.glTexImage2D(
-        GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8, w, h, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, rgba
-      )
-      GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST)
-      GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST)
-      self.size = (w, h)
-    else:
-      GL.glTexSubImage2D(GL.GL_TEXTURE_2D, 0, 0, 0, w, h, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, rgba)
-
-    GL.glUseProgram(shader.render_idx)
-    GL.glUniform1i(GL.glGetUniformLocation(shader.render_idx, "overlay"), 15)
-
-    depth_on = GL.glIsEnabled(GL.GL_DEPTH_TEST)
-    cull_on = GL.glIsEnabled(GL.GL_CULL_FACE)
-    GL.glDisable(GL.GL_DEPTH_TEST)
-    GL.glDisable(GL.GL_CULL_FACE)
-    GL.glEnable(GL.GL_BLEND)
-    GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
-
-    GL.glBindVertexArray(self.vao)
-    GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
-    GL.glBindVertexArray(0)
-
-    GL.glDisable(GL.GL_BLEND)
-    if depth_on:
-      GL.glEnable(GL.GL_DEPTH_TEST)
-    if cull_on:
-      GL.glEnable(GL.GL_CULL_FACE)
-    GL.glActiveTexture(GL.GL_TEXTURE0)
