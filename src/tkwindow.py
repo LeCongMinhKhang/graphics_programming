@@ -9,6 +9,7 @@ from PIL import Image, ImageOps
 
 import scenes as scenes_pkg  # the scenes directory
 
+from src.tools import get_bounding_box, generate_colors, build_overlay
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
 from src.parsefile import parseFile
@@ -243,7 +244,7 @@ class App(tk.Tk):
     )
     # 1<<0 = scene id
     # 1<<1 = current time
-    self.outputfile_opt = tk.IntVar(self, value=0)
+    self.outputfile_opt = tk.IntVar(self, value=1)
     self.outputfile_prefix = tk.StringVar(self, value="output/")
     self.outputfile_path = tk.StringVar(self, value="")
     self.outputfile_opt.trace_add(
@@ -259,7 +260,7 @@ class App(tk.Tk):
       self.table.checkButton(
         id="outputfile_opt_name",
         command=lambda: self.outputFileSelect(0),
-        default=False,
+        default=True,
       ),
     )
     self.table.newRow(
@@ -515,9 +516,7 @@ class AppOgl(OpenGLFrame):
     self.pipeline_mode = "rgb"
 
     self.objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
-    self.objects_rendered = (
-      set()
-    )  # set containing the indices of the pipeline objects to be rendered
+    self.objects_rendered = {}  # set containing the indices of the pipeline objects to be rendered associated with the object name
 
     self.nb_lights = 1
     self.update_lights(self.nb_lights)
@@ -808,20 +807,20 @@ class AppOgl(OpenGLFrame):
 
   def select_program(self, name):
     # for each rendered object, update it with selected shaders/program
-    for idx in self.objects_rendered:
+    for idx, _ in self.objects_rendered.items():
       self.update_object(idx, program=name)
     self.update_static_uniforms(update_lights=True)
 
   def select_material(self, name):
     # for each rendered object, update it with selected material
-    for idx in self.objects_rendered:
+    for idx, _ in self.objects_rendered.items():
       self.update_object(idx, material=name)
 
   def select_color_mode(self, color_mode):
     if color_mode not in ("texture", "color"):
       logger.error('color_mode must be "texture" or "color"')
       exit(1)
-    for obj_id in self.objects_rendered:
+    for obj_id, _ in self.objects_rendered.items():
       self.update_object(obj_id, color_mode=color_mode)
     self.update_static_uniforms()
 
@@ -859,7 +858,7 @@ class AppOgl(OpenGLFrame):
 
   def update_static_uniforms(self, update_lights=False):
     additional_uniforms = self.light_uniforms if update_lights else np.array([])
-    for obj_id in self.objects_rendered:
+    for obj_id, _ in self.objects_rendered.items():
       self.pipeline.upload_static_uniforms(obj_id, additional_uniforms)
 
   def set_scene(self, name, filePath=None):
@@ -1005,7 +1004,7 @@ class AppOgl(OpenGLFrame):
     if entry[0] == 0:
       logger.debug("nothing to free, nothing reserved")
       return
-    self.objects_rendered.remove(entry[1][entry[0] - 1])
+    self.objects_rendered.pop(entry[1][entry[0] - 1])
     self.objects[obj_name][0] -= 1
     if obj_name == "file":
       self.pipeline.free_object(self.objects["file"][1][-1])
@@ -1041,7 +1040,7 @@ class AppOgl(OpenGLFrame):
 
     entry = self.objects[obj_name]  # update the entry if object created
     obj_id = entry[1][entry[0] - 1]
-    self.objects_rendered.add(obj_id)
+    self.objects_rendered[obj_id] = obj_name
     return obj_id, obj_program_name
 
   def create_material(self, name, uniforms):
@@ -1096,7 +1095,22 @@ class AppOgl(OpenGLFrame):
     uniforms = self.cam.update(
       uniforms=np.concatenate((self.default_static_uniforms, uniforms)), mouse=self.mouse
     )
-    self.pipeline.draw(uniforms=uniforms, to_draw=self.objects_rendered, mode=self.pipeline_mode)
+
+    size = (self.winfo_width(), self.winfo_height())
+    self.pipeline.draw(
+      uniforms=uniforms, to_draw=self.objects_rendered.keys(), mode=self.pipeline_mode
+    )
+
+    if self.pipeline_mode == "labels":
+      bounding_boxes = []
+      for obj_id, obj_name in self.objects_rendered.items():
+        frame_array = self.pipeline.render_to_array(
+          uniforms=uniforms, to_draw=[obj_id], mode="masks"
+        )
+        # TODO: get bounding box on low res for perf
+        bounding_boxes.append((obj_name, get_bounding_box(frame_array)))
+      colors = generate_colors(len(bounding_boxes))
+      self.pipeline.draw_overlay(build_overlay(size, bounding_boxes, colors))
 
 
 def display(init_scene=None, window_size=(640, 480), camera=Camera, lights=None, wireframe=False):

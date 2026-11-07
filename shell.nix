@@ -3,6 +3,7 @@ let
 in pkgs.mkShell {
   packages = with pkgs; [
     (python312.withPackages (python-pkgs: with python-pkgs; [
+      matplotlib
       pyopengl
       glfw
       numpy
