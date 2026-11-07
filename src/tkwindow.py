@@ -1102,17 +1102,13 @@ class AppOgl(OpenGLFrame):
     )
 
     if self.pipeline_mode == "labels":
-      bounding_boxes = {}
+      bounding_boxes = []
       for obj_id, obj_name in self.objects_rendered.items():
         frame_array = self.pipeline.render_to_array(
           uniforms=uniforms, to_draw=[obj_id], mode="masks"
         )
         # TODO: get bounding box on low res for perf
-        bounding_boxes[obj_name] = get_bounding_box(frame_array)
-        # import matplotlib.pyplot as plt
-
-        # plt.imshow(frame_array)
-        # plt.show()
+        bounding_boxes.append((obj_name, get_bounding_box(frame_array)))
       colors = generate_colors(len(bounding_boxes))
       self.pipeline.draw_overlay(build_overlay(size, bounding_boxes, colors))
 

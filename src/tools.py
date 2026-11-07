@@ -86,7 +86,7 @@ def generate_colors(n, saturation=0.8, value=0.95):
 def build_overlay(size, bboxes_by_name, colors):
   w, h = size
   overlay = np.zeros((h, w, 4), dtype=np.uint8)  # fully transparent
-  for (name, bbox), color in zip(bboxes_by_name.items(), colors):
+  for (name, bbox), color in zip(bboxes_by_name, colors):
     c = (*(int(v * 255) for v in color), 255)
     draw_bounding_box(overlay, bbox, color=c, label=name)  # your existing function
   return overlay
