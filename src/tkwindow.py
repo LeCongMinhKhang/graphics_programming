@@ -9,7 +9,7 @@ from PIL import Image, ImageOps
 
 import scenes as scenes_pkg  # the scenes directory
 
-from src.tools import get_bounding_box, draw_bounding_box, generate_colors, build_overlay
+from src.tools import get_bounding_box, generate_colors, build_overlay
 from src.pipeline import Pipeline
 from src.camera.camera import Camera
 from src.parsefile import parseFile

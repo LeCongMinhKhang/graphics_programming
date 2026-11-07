@@ -7,29 +7,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# def get_bounding_box(frame):
-#   """
-#   :param frame: the picture of an object
-#   :return: the bounding box of the object
-#   """
-#   frame_height, frame_width, _ = frame.shape
-#   top, bot, right, left = None, None, None, None
-#   for col in range(frame_width):
-#     for row in range(frame_height):
-#       pixel = frame[col, row]
-#       if pixel[3] != 0:
-#         if top is None or top < row:
-#           top = row
-#         if bot is None or bot > row:
-#           bot = row
-#         if right is None or right < col:
-#           right = col
-#         if left is None or left > col:
-#           left = col
-#   print(top, bot, right, left)
-#   return top, bot, right, left
-
-
 def get_bounding_box(frame, threshold=0):
   """
   :param frame: (h, w, 4) RGBA image of an object, top row first
@@ -48,11 +25,6 @@ def get_bounding_box(frame, threshold=0):
   return top, bot, right, left
 
 
-# def bounding_box(frame_width, frame_height, top, bot, right, left):
-#   frame = np.zeros((frame_height, frame_width, 4))
-#   return
-
-
 def draw_bounding_box(image, bbox, color=(0, 255, 0), thickness=2, label=None):
   """
   Draw a bounding box in place on <image>.
@@ -67,7 +39,7 @@ def draw_bounding_box(image, bbox, color=(0, 255, 0), thickness=2, label=None):
     return image
   top, bot, right, left = bbox
   if image.shape[2] == 4 and len(color) == 3:
-    color = (*color, 255)  # opaque alpha, otherwise the box may be invisible
+    color = (*color, 255)  # opaque alpha, for the box to be visible
 
   cv2.rectangle(image, (left, top), (right, bot), color, thickness)
   if label is not None:
@@ -88,5 +60,5 @@ def build_overlay(size, bboxes_by_name, colors):
   overlay = np.zeros((h, w, 4), dtype=np.uint8)  # fully transparent
   for (name, bbox), color in zip(bboxes_by_name, colors):
     c = (*(int(v * 255) for v in color), 255)
-    draw_bounding_box(overlay, bbox, color=c, label=name)  # your existing function
+    draw_bounding_box(overlay, bbox, color=c, label=name)
   return overlay
