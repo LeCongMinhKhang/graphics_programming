@@ -24,6 +24,7 @@ def scenes(gl_app: AppOgl):
     "surface",
     "sphere",
     "torus",
+    "frame",
   ]
 
   def make_build_scene(name):

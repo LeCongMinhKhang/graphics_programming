@@ -6,6 +6,8 @@ import cv2
 import logging
 from pathlib import Path
 
+from src.tools import generate_colors
+
 logger = logging.getLogger(__name__)
 MAX_LIGHTS = 16
 
@@ -23,34 +25,32 @@ class Pipeline:
   # }
   objects = []
   programs = []  # list of programs (<Shader>, <Umanager>)
+  default_programs_id = {}
 
-  def update_program(self, program_id, vert_shader=None, frag_shader=None, static_uniforms=None):
-    """
-    Update a program or create one if program_id is -1
-    :return: program_id (the new one if a program has been created)
-    """
-    if vert_shader is None and frag_shader is None and static_uniforms is None:
-      logger.debug("all data parameter are None, no update performed")
-      return
+  def __init__(self):
+    self.default_programs_id["depth"] = self.create_program(
+      vert_shader="./shaders/interp.vert", frag_shader="./shaders/depth.frag"
+    )  # shader program needed for depth pipeline mode
+    self.default_programs_id["masks"] = self.create_program(
+      vert_shader="./shaders/interp.vert", frag_shader="./shaders/masks.frag"
+    )  # shader program needed for masks pipeline mode
+    self.default_programs_id["overlay"] = self.create_program(
+      vert_shader="./shaders/quad.vert", frag_shader="./shaders/quad.frag"
+    )  # shader program needed for masks pipeline mode
+    self.empty_vao = GL.glGenVertexArrays(1)  # need a vao without attributes for overlay drawings
 
-    if program_id == -1:
-      if vert_shader is None or frag_shader is None:
-        logger.error("need both vert_shader and frag_shader files when creating a program")
-        exit(1)
-      self.programs.append((None, None))
-      program_id = len(self.programs) - 1
+  def create_program(self, vert_shader, frag_shader, static_uniforms=None):
+    if vert_shader is None or frag_shader is None:
+      logger.error("need both vert_shader and frag_shader files when creating a program")
+      exit(1)
+    self.programs.append((None, None))
+    program_id = len(self.programs) - 1
 
-    # shaders
-    if vert_shader is not None and frag_shader is not None:
-      logger.debug("Loading shaders")
-      shader = Shader(vert_shader, frag_shader)
-      uma = UManager(shader)
-      self.programs[program_id] = (shader, uma)
-      logger.debug(
-        "Vertex shader: %s loaded\n\tFragment shader: %s loaded", vert_shader, frag_shader
-      )
-    elif vert_shader is not None or frag_shader is not None:
-      logger.debug("both shader files must be given at the same time, no update performed")
+    logger.debug("Loading shaders")
+    shader = Shader(vert_shader, frag_shader)
+    uma = UManager(shader)
+    self.programs[program_id] = (shader, uma)
+    logger.debug("Vertex shader: %s loaded\n\tFragment shader: %s loaded", vert_shader, frag_shader)
 
     # Uniforms
     if static_uniforms is not None:
@@ -72,6 +72,58 @@ class Pipeline:
           logger.debug("Static uniform %s added", uniform["name"])
 
     return program_id
+
+  def update_program(
+    self, program_id, vert_shader=None, frag_shader=None, static_uniforms=None, mode="rgb"
+  ):
+    """
+    Update a program or create one if program_id is -1
+    :return: program_id (the new one if a program has been created)
+    """
+    if vert_shader is None and frag_shader is None and static_uniforms is None:
+      logger.debug("all data parameter are None, no update performed")
+      return
+
+    program_id_original = None
+    if program_id == -1:
+      program_id_original = self.create_program(vert_shader, frag_shader, static_uniforms)
+
+    if mode == "depth":
+      program_id = self.default_programs_id["depth"]
+    else:
+      # shaders
+      if vert_shader is not None and frag_shader is not None:
+        logger.debug("Loading shaders")
+        shader = Shader(vert_shader, frag_shader)
+        uma = UManager(shader)
+        self.programs[program_id] = (shader, uma)
+        logger.debug(
+          "Vertex shader: %s loaded\n\tFragment shader: %s loaded", vert_shader, frag_shader
+        )
+      elif vert_shader is not None or frag_shader is not None:
+        logger.debug("both shader files must be given at the same time, no update performed")
+    shader, uma = self.programs[program_id]
+
+    # Uniforms
+    if static_uniforms is not None:
+      for uniform in static_uniforms:
+        if (
+          type(uniform) is not type({})
+          or "name" not in uniform.keys()
+          or "value" not in uniform.keys()
+          or "type" not in uniform.keys()
+        ):
+          logger.error('static_uniforms vector should contain dict("name": n, "value": v)')
+        else:
+          if "transpose" in uniform.keys():
+            uma.upload_uniform(
+              uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]
+            )
+          else:
+            uma.upload_uniform(uniform["value"], uniform["name"], uniform["type"])
+          logger.debug("Static uniform %s added", uniform["name"])
+
+    return program_id_original or program_id
 
   def add_object(
     self,
@@ -326,7 +378,7 @@ class Pipeline:
       else:
         uma.upload_uniform(uniform["value"], uniform["name"], uniform["type"])
 
-  def draw(self, uniforms=np.array([]), to_draw=None):
+  def draw(self, uniforms=np.array([]), to_draw=None, mode="rgb"):
     """
     Draws objects with OpenGL.
     The objects to be rendered are indexed by loading order.
@@ -334,19 +386,40 @@ class Pipeline:
     :param uniforms: uniforms to upload for this draw call (dynamic ones)
     :param to_draw: index list of objects to be rendered.
                     All objects are rendered when parameter not provided.
+    :param mode: {"rgb", "depth", "masks", "labels"}
     """
 
-    def draw_object(obj):
+    def draw_object(obj, mask_color=None):
       vao = obj["vao"]
-      (shader, uma) = self.programs[obj["program_id"]]
       gl_mode = obj["gl_mode"]
       specific_uniforms = obj["uniforms"]
       indexing = obj["indexing"]
+
+      mask_color_uniform = []
+      match mode:
+        case "rgb" | "labels":
+          shader, uma = self.programs[obj["program_id"]]
+        case "depth":
+          shader, uma = self.programs[self.default_programs_id[mode]]
+        case "masks":
+          shader, uma = self.programs[self.default_programs_id[mode]]
+          mask_color_uniform = [{"name": "iColor", "value": mask_color, "type": "vec3"}]
+        # case "labels":
+        #   shader, uma = self.programs[self.default_programs_id["interpolation"]]
+        case _:
+          logger.error(
+            'unknown pipeline draw mode "%s", should be in {"rgb", "depth", "masks", "labels"}',
+            mode,
+          )
+          exit(1)
       vao.activate()  # bind VAO
       GL.glUseProgram(shader.render_idx)
+
       # upload non-static uniforms
       # specific_uniforms must be also updated for each object
-      for uniform in np.concatenate((uniforms, np.array(specific_uniforms))):
+      for uniform in np.concatenate(
+        (uniforms, np.array(specific_uniforms), np.array(mask_color_uniform))
+      ):
         if "transpose" in uniform.keys():
           uma.upload_uniform(
             uniform["value"], uniform["name"], uniform["type"], uniform["transpose"]
@@ -360,11 +433,13 @@ class Pipeline:
       vao.deactivate()
 
     if to_draw is None:
-      for obj in self.objects:
-        draw_object(obj)
+      mask_colors = generate_colors(len(self.objects))
+      for obj, mask_color in zip(self.objects, mask_colors):
+        draw_object(obj, mask_color)
     else:
-      for idx in to_draw:
-        draw_object(self.objects[idx])
+      mask_colors = generate_colors(len(to_draw))
+      for idx, mask_color in zip(to_draw, mask_colors):
+        draw_object(self.objects[idx], mask_color)
 
   def free_object(self, obj_id):
     self.objects[obj_id]["vao"].destroy()
@@ -380,8 +455,102 @@ class Pipeline:
         shader.destroy()
     self.objects.clear()
     self.programs.clear()
+    self._free_offscreen()
     UManager.destroy_textures()
     logger.debug("Allocated buffers freed")
+
+  def _ensure_offscreen(self, width, height, float_color=False):
+    key = (width, height, float_color)
+    if getattr(self, "_fbo_key", None) == key:
+      return
+    self._free_offscreen()
+
+    internal = GL.GL_RGBA32F if float_color else GL.GL_RGBA8
+    self._color_rb = GL.glGenRenderbuffers(1)
+    GL.glBindRenderbuffer(GL.GL_RENDERBUFFER, self._color_rb)
+    GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, internal, width, height)
+
+    self._depth_rb = GL.glGenRenderbuffers(1)
+    GL.glBindRenderbuffer(GL.GL_RENDERBUFFER, self._depth_rb)
+    GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_DEPTH_COMPONENT24, width, height)
+
+    self._fbo = GL.glGenFramebuffers(1)
+    GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self._fbo)
+    GL.glFramebufferRenderbuffer(
+      GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_RENDERBUFFER, self._color_rb
+    )
+    GL.glFramebufferRenderbuffer(
+      GL.GL_FRAMEBUFFER, GL.GL_DEPTH_ATTACHMENT, GL.GL_RENDERBUFFER, self._depth_rb
+    )
+    if GL.glCheckFramebufferStatus(GL.GL_FRAMEBUFFER) != GL.GL_FRAMEBUFFER_COMPLETE:
+      logger.error("offscreen framebuffer incomplete")
+      exit(1)
+    self._fbo_key = key
+
+  def _free_offscreen(self):
+    if getattr(self, "_fbo_key", None) is None:
+      return
+    GL.glDeleteFramebuffers(1, [self._fbo])
+    GL.glDeleteRenderbuffers(2, [self._color_rb, self._depth_rb])
+    self._fbo_key = None
+
+  def render_to_array(self, uniforms, to_draw, mode="rgb", size=(640, 480), float_color=False):
+    """Render <to_draw> objects offscreen and return an (h, w, 4) array, top row first."""
+    width, height = size
+
+    # save state (tkinter's default framebuffer is not always 0)
+    prev_fbo = GL.glGetIntegerv(GL.GL_FRAMEBUFFER_BINDING)
+    prev_viewport = GL.glGetIntegerv(GL.GL_VIEWPORT)
+    prev_clear = GL.glGetFloatv(GL.GL_COLOR_CLEAR_VALUE)
+    # print(prev_fbo, prev_viewport, prev_clear)
+
+    self._ensure_offscreen(width, height, float_color)
+
+    try:
+      GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self._fbo)
+      GL.glViewport(0, 0, width, height)
+      GL.glClearColor(0, 0, 0, 0)
+      GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+
+      self.draw(uniforms=uniforms, to_draw=to_draw, mode=mode)
+
+      GL.glPixelStorei(GL.GL_PACK_ALIGNMENT, 1)
+      if float_color:
+        raw = GL.glReadPixels(0, 0, width, height, GL.GL_RGBA, GL.GL_FLOAT)
+        img = np.frombuffer(raw, dtype=np.float32)
+      else:
+        raw = GL.glReadPixels(0, 0, width, height, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE)
+        img = np.frombuffer(raw, dtype=np.uint8)
+      img = img.reshape(height, width, 4)
+      return np.flipud(img).copy()  # OpenGL is bottom-up
+    finally:
+      GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, int(prev_fbo))
+      GL.glViewport(*[int(v) for v in prev_viewport])
+      GL.glClearColor(*prev_clear)
+
+  def draw_overlay(self, rgba):
+    shader, uma = self.programs[self.default_programs_id["overlay"]]
+
+    # setup overlay texture
+    uma.bind_texture("overlay", "overlay", rgba, update=True)
+    GL.glUseProgram(shader.render_idx)
+    depth_on = GL.glIsEnabled(GL.GL_DEPTH_TEST)
+    cull_on = GL.glIsEnabled(GL.GL_CULL_FACE)
+    GL.glDisable(GL.GL_DEPTH_TEST)
+    GL.glDisable(GL.GL_CULL_FACE)
+    GL.glEnable(GL.GL_BLEND)
+    GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
+
+    GL.glBindVertexArray(self.empty_vao)
+    GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
+    GL.glBindVertexArray(0)
+
+    GL.glDisable(GL.GL_BLEND)
+    if depth_on:
+      GL.glEnable(GL.GL_DEPTH_TEST)
+    if cull_on:
+      GL.glEnable(GL.GL_CULL_FACE)
+    GL.glActiveTexture(GL.GL_TEXTURE0)
 
 
 class VAO(object):
@@ -467,36 +636,54 @@ class UManager(object):
     cls.textures.clear()
 
   @classmethod
-  def setup_texture(cls, path):
+  def setup_texture(cls, path, image_array=None, update=False):
     """
     Add texture from <path> in the UManager.textures global list.
     :return: texture dictionary (see UManager.textures for the content)
     """
-    # deduplication: same image path = same texture, same unit
+    texture_id = None
+    unit = None
+    new_texture = True
     for t in cls.textures:
       if t["path"] == path:
-        return t
+        texture_id = t["id"]
+        unit = t["unit"]
+        new_texture = False
+        if not update:
+          return t
+        break
 
-    unit = len(cls.textures)
-    if unit >= GL.glGetIntegerv(GL.GL_MAX_TEXTURE_IMAGE_UNITS):
-      logger.error(f"out of texture units ({unit})")
-      exit(1)
+    if new_texture:
+      unit = len(cls.textures)
+      if unit >= GL.glGetIntegerv(GL.GL_MAX_TEXTURE_IMAGE_UNITS):
+        logger.error(f"out of texture units ({unit})")
+        exit(1)
 
     GL.glActiveTexture(GL.GL_TEXTURE0 + unit)
-    tex_id = UManager.create_texture(path)
-    GL.glBindTexture(GL.GL_TEXTURE_2D, tex_id)
+    texture_id = UManager.create_texture(path, image_array, texture_id)
 
-    entry = {"path": path, "id": tex_id, "unit": unit}
-    cls.textures.append(entry)
+    entry = {"path": path, "id": texture_id, "unit": unit}
+    if new_texture:
+      cls.textures.append(entry)
     return entry
 
   @staticmethod
-  def create_texture(image_file):
-    """GPU-wide part: load the image and upload it as a texture object.
-    Independent of any shader program. Returns the texture id."""
-    rgba_image = UManager.load_texture(image_file)
+  def create_texture(image_path, image_array=None, texture_id=None):
+    """
+    GPU-wide part: load the image and upload it as a texture object.
+    Independent of any shader program. Returns the texture id.
+    If image_array is not None, image_path will be used as texture name.
+    :param texture_id: if not None, updates the texture
+    """
+    if image_array is not None:
+      rgba_image = image_array
+    else:
+      rgba_image = UManager.load_texture(image_path)
 
-    texture_id = GL.glGenTextures(1)
+    if texture_id is None:
+      texture_id = GL.glGenTextures(1)
+      logger.debug("new texture created")
+
     GL.glBindTexture(GL.GL_TEXTURE_2D, texture_id)
 
     GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
@@ -514,7 +701,6 @@ class UManager(object):
     GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
     GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
 
-    logger.debug("texture uploaded to the GPU")
     return texture_id
 
   @staticmethod
@@ -533,23 +719,13 @@ class UManager(object):
     img = cv2.flip(img, 0)  # opengl convention
     return np.ascontiguousarray(img)
 
-  def bind_texture(self, sampler_name, path):
+  def bind_texture(self, sampler_name, path, image_array=None, update=False):
     """Shader part: attach an existing texture to a unit and point this
     program's sampler uniform at that unit."""
-    exists = False
-    texture_id = -1
-    texture_unit = -1
-    for texture in UManager.textures:
-      if texture["path"] == path:
-        texture_id = texture["id"]
-        texture_unit = texture["unit"]
-        exists = True
-        break
 
-    if not exists:
-      texture = UManager.setup_texture(path)
-      texture_id = texture["id"]
-      texture_unit = texture["unit"]
+    texture = UManager.setup_texture(path, image_array, update)
+    texture_id = texture["id"]
+    texture_unit = texture["unit"]
 
     GL.glUseProgram(self.shader.render_idx)  # glUniform1i acts on the current program
 

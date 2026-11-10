@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def generate(size: float = 1.0, n: int = 12, color: str = "normal", hex=0xFF69FF, **kwargs):
+def generate(size: float = 1.0, n: int = 12, color: str = "normal", hexa=0xFF69FF, **kwargs):
   size = float(size)
   n = int(n)
   color = str(color)
@@ -62,12 +62,8 @@ def generate(size: float = 1.0, n: int = 12, color: str = "normal", hex=0xFF69FF
   data["indices"] = indices
 
   tools.vertexNeighborNormals(data)
-  print("choosing color")
-  tools.chooseColoring(color)(data, hex=hex)
-  print("done color")
-  print("started UV unwrapping")
+  tools.chooseColoring(color)(data, hexa=hexa)
   uvTexture(data, numOfVertPerLatRing, n)
-  print("done UV unwrap")
   tools.dataToNumpyArray(data)
   return data
 
@@ -75,7 +71,6 @@ def generate(size: float = 1.0, n: int = 12, color: str = "normal", hex=0xFF69FF
 def uvTexture(data, novplr, n):
   poleIndex = novplr * n
 
-  print("started slicing")
   mercatorProjection, groups = tools.uvSlicer(
     data,
     [
@@ -94,16 +89,13 @@ def uvTexture(data, novplr, n):
     ],
     withGroups=True,
   )
-  print("done slicing")
 
   data["uvs"] = np.full((data["vertices"].shape[0], 2), [5, 5], dtype=np.float32)
 
   # middle
-  print("started mapping middle")
   for i in range(n):
     for j in range(1, novplr):
       data["uvs"][i * novplr + j] = [j / novplr, (i + 1) / (n + 1)]
-  print("starting SPECIAL middle")
   for i in range(1, novplr - 1):
     correctSideBottomEdge = tools.getUvSide(
       data, mercatorProjection, [poleIndex], [i, i + 1], groups
@@ -118,18 +110,14 @@ def uvTexture(data, novplr, n):
     )
     data["uvs"][mercatorProjection[poleIndex + 1][correctSideTopEdge]] = [(i + 0.5) / novplr, 1]
 
-  print("done mapping middle")
   # left right
-  print("start mapping left right")
   leftSide = tools.getUvSide(data, mercatorProjection, [0], [1], groups)
   rightSide = tools.getUvSide(data, mercatorProjection, [0], [novplr - 1], groups)
   for i in range(n):
     data["uvs"][mercatorProjection[i * novplr][leftSide]] = [0, (i + 1) / (n + 1)]
     data["uvs"][mercatorProjection[i * novplr][rightSide]] = [1, (i + 1) / (n + 1)]
-  print("done mapping left right")
   # topright bottomright
 
-  print("start mapping right corners")
   topRight = tools.getUvSide(
     data, mercatorProjection, [poleIndex + 1], [n * novplr - 1, (n - 1) * novplr], groups
   )
@@ -137,12 +125,9 @@ def uvTexture(data, novplr, n):
   bottomRight = tools.getUvSide(data, mercatorProjection, [poleIndex], [novplr - 1, 0], groups)
   data["uvs"][mercatorProjection[poleIndex][bottomRight]] = [(novplr - 0.5) / novplr, 0]
   # topleft bottomleft
-  print("start mapping left corners")
   topLeft = tools.getUvSide(
     data, mercatorProjection, [poleIndex + 1], [(n - 1) * novplr + 1, (n - 1) * novplr], groups
   )
   data["uvs"][mercatorProjection[poleIndex + 1][topLeft]] = [0.5 / novplr, 1]
   bottomLeft = tools.getUvSide(data, mercatorProjection, [poleIndex], [1, 0], groups)
   data["uvs"][mercatorProjection[poleIndex][bottomLeft]] = [0.5 / novplr, 0]
-
-  print("done mapping corners")
