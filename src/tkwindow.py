@@ -21,6 +21,7 @@ from src.light import Light
 from .tkwindowComponents.table import Tablerone
 from .tkwindowComponents.stylingHelper import RowTracker as Row, StyleEnum as Ste
 from .tkwindowComponents.scrollable import ScrollableList
+from .tkwindowComponents.boxScaler import BoxScaler
 
 logger = logging.getLogger(__name__)
 
@@ -69,15 +70,18 @@ class App(tk.Tk):
   ):
     super().__init__()
     self.title("Graphics")
-    self.resizable(True, False)
+    self.resizable(True, True)
     w, h = window_size[0] + 500, window_size[1]
     x = (self.winfo_screenwidth() - w) // 2
     y = (self.winfo_screenheight() - h) // 2
     self.geometry(f"{w}x{h}+{x}+{y}")  # centers the window
     self.minsize(window_size[0], window_size[1])
 
-    self.grid_columnconfigure(index=(0), minsize=window_size[0])
-    self.grid_columnconfigure(index=(1), weight=1)
+    # self.grid_columnconfigure(index=(0), 
+    #                           # minsize=window_size[0]
+    #                           )
+    self.grid_columnconfigure(index=(0,2), weight=1000)
+    self.grid_rowconfigure(index=(0,), weight=1000)
     self.diagnostics = Diagnostics(self)
     self.diagnostics.grid(row=0, column=0, sticky="nw")
     self.viewport = AppOgl(
@@ -87,7 +91,8 @@ class App(tk.Tk):
       camera=camera,
       func=self.diagnostics.fps,
     )
-    self.viewport.grid(row=0, column=0, sticky="nw")
+    self.viewport.grid(row=0, column=0, sticky="nsew")
+    self.viewport.bind("<Configure>", lambda event: self.viewport.setDimension(event))
     self.diagnostics.lift(self.viewport)
 
     self.scenes_types = load_all_scenes(self.viewport)
@@ -107,7 +112,7 @@ class App(tk.Tk):
 
     # UI definition
     self.sidebar = ScrollableList(self)
-    self.sidebar.grid(row=0, column=1, sticky="nsew")
+    self.sidebar.grid(row=0, column=2, sticky="nsew")
     self.sidebar.frameframe.grid_columnconfigure(index=(0,), weight=1)
 
     self.table = Tablerone(self.sidebar.frameframe, col=2)
@@ -239,7 +244,9 @@ class App(tk.Tk):
     self.table.newRow(
       self.table.label(text="Take screenshot:"),
       self.table.button(
-        text="Save Image", id="saveImage", command=lambda: self.saveImage(window_size)
+        text = "Save Image",
+        id = "saveImage",
+        command = lambda: self.saveImage(self.viewport.window_size)
       ),
     )
     # 1<<0 = scene id
@@ -292,6 +299,25 @@ class App(tk.Tk):
 
     self.after(100, self.viewport.printContext)
     self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+
+    self.hScale = BoxScaler(self,self.viewport,self.sidebar,"horizontal")
+    self.hScale.grid(row=0, column=1, sticky="nsew")
+
+    # # bottom bars test
+    # self.bottombar = ttk.Frame(self,relief= Ste.FRAME_RELIEF.value, padding=Ste.PAD.value)
+    # self.bottombar.grid(row=2,column=0,columnspan = 3,sticky="nsew")
+    # BoxScaler(self,self.viewport,self.bottombar,"vertical").grid(row=1, column=0, columnspan=3, sticky="nsew")
+    # self.bottombar1 = ttk.Frame(self,relief= Ste.FRAME_RELIEF.value, padding=Ste.PAD.value)
+    # self.bottombar1.grid(row=4,column=0,columnspan = 3,sticky="nsew")
+    # BoxScaler(self,self.bottombar,self.bottombar1,"vertical").grid(row=3, column=0, columnspan=3, sticky="nsew")
+    # self.bottombar.grid_rowconfigure(index=(0,),weight=1)
+    # self.bottombar1.grid_rowconfigure(index=(0,),weight=1)
+    # self.bottombar.grid_columnconfigure(index=(0,),weight=1)
+    # self.bottombar1.grid_columnconfigure(index=(0,),weight=1)
+    # ttk.Label(self.bottombar,text="test bottombar rescale").grid(row=0,column=0,sticky="nsew")
+    # ttk.Label(self.bottombar1,text="test bottombar1 rescale").grid(row=0,column=0,sticky="nsew")
+
     self.viewport.mainloop()
 
   def bindUpdateFilepath(self):
@@ -337,7 +363,8 @@ class App(tk.Tk):
   def saveImage(self, window_size):
     data = GL.glReadPixels(0, 0, window_size[0], window_size[1], GL.GL_RGBA, GL.GL_UNSIGNED_BYTE)
     image = Image.frombytes("RGBA", (window_size[0], window_size[1]), data)
-    image = ImageOps.flip(image)  # in my case image is flipped top-bottom for some reason
+    image = ImageOps.flip(image) # in my case image is flipped top-bottom for some reason
+    self.setOutputfilePath()
     path = Path(self.outputfile_path.get())
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, "PNG")
@@ -512,6 +539,7 @@ class AppOgl(OpenGLFrame):
     # self.data = data
     self.func = func
     self.init_scene = init_scene
+    self.window_size = window_size
     self.scenes = {}
     self.pipeline_mode = "rgb"
 
@@ -664,12 +692,11 @@ class AppOgl(OpenGLFrame):
         ]
       ),
     }
-
     self.default_static_uniforms = np.array(
       [
         {
           "name": "iResolution",
-          "value": np.array([window_size[0], window_size[1]], dtype=np.float32),
+          "value": np.array([self.window_size[0], self.window_size[1]], dtype=np.float32),
           "type": "vec2",
         },
         {
@@ -685,7 +712,9 @@ class AppOgl(OpenGLFrame):
     self.start_time = time.time()
     self.old_time = self.start_time
     self.new_time = self.old_time
-    super().__init__(root, *args, width=window_size[0], height=window_size[1], **kw)
+    super().__init__(root, *args,
+                      # width=self.window_size[0], height=self.window_size[1], 
+                      **kw)
     self.bind("<Motion>", self.on_drag)
     self.bind("<Button-1>", self.on_mouse)
     self.bind("<ButtonRelease-1>", self.on_mouse)
@@ -702,6 +731,11 @@ class AppOgl(OpenGLFrame):
         logger.error("system platform %s not recognized", sys.platform)
         exit(1)
     self.animate = 1
+  
+  def setDimension(self,event):
+    self.window_size = [event.width,event.height]
+    self.default_static_uniforms[0]["value"] = np.array([event.width,event.height], dtype=np.float32)
+    GL.glViewport(0, 0, self.window_size[0], self.window_size[1])
 
   def on_drag(self, event):
     self.cursor_pos_callback(event.x, event.y)
@@ -762,7 +796,6 @@ class AppOgl(OpenGLFrame):
     """Initalize gl states when the frame is created"""
     GL.glEnable(GL.GL_DEPTH_TEST)  # enable depth test
     GL.glDepthFunc(GL.GL_LESS)  # default; fragment passes if depth < stored depth
-
     GL.glFrontFace(GL.GL_CCW)  # winding order: counter clockwise indexing
     GL.glCullFace(GL.GL_BACK)  # when face culling enabled, render only front faces
 
