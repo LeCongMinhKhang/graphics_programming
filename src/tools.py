@@ -17,7 +17,7 @@ def get_bounding_box(frame, threshold=0):
   rows = np.flatnonzero(mask.any(axis=1))  # y indices containing the object
   cols = np.flatnonzero(mask.any(axis=0))  # x indices containing the object
   if rows.size == 0:
-    logger.debug("no object pixels found in frame")
+    # logger.debug("no object pixels found in frame")
     return None
 
   top, bot = int(rows[0]), int(rows[-1])

@@ -1129,7 +1129,6 @@ class AppOgl(OpenGLFrame):
       uniforms=np.concatenate((self.default_static_uniforms, uniforms)), mouse=self.mouse
     )
 
-    size = (self.winfo_width(), self.winfo_height())
     self.pipeline.draw(
       uniforms=uniforms, to_draw=self.objects_rendered.keys(), mode=self.pipeline_mode
     )
@@ -1138,12 +1137,12 @@ class AppOgl(OpenGLFrame):
       bounding_boxes = []
       for obj_id, obj_name in self.objects_rendered.items():
         frame_array = self.pipeline.render_to_array(
-          uniforms=uniforms, to_draw=[obj_id], mode="masks"
+          uniforms=uniforms, to_draw=[obj_id], mode="masks", size = self.window_size
         )
         # TODO: get bounding box on low res for perf
         bounding_boxes.append((obj_name, get_bounding_box(frame_array)))
       colors = generate_colors(len(bounding_boxes))
-      self.pipeline.draw_overlay(build_overlay(size, bounding_boxes, colors))
+      self.pipeline.draw_overlay(build_overlay(self.window_size, bounding_boxes, colors))
 
 
 def display(init_scene=None, window_size=(640, 480), camera=Camera, lights=None, wireframe=False):
