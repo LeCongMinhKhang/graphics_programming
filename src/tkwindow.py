@@ -70,7 +70,7 @@ class App(tk.Tk):
     super().__init__()
     self.title("Graphics")
     self.resizable(True, True)
-    w, h = window_size[0] + 500, window_size[1] + 500
+    w, h = window_size[0] + 500, window_size[1]
     x = (self.winfo_screenwidth() - w) // 2
     y = (self.winfo_screenheight() - h) // 2
     self.geometry(f"{w}x{h}+{x}+{y}")  # centers the window
@@ -80,7 +80,7 @@ class App(tk.Tk):
     #                           # minsize=window_size[0]
     #                           )
     self.grid_columnconfigure(index=(0,2), weight=1000)
-    self.grid_rowconfigure(index=(0,2,4), weight=1000)
+    self.grid_rowconfigure(index=(0,), weight=1000)
     self.diagnostics = Diagnostics(self)
     self.diagnostics.grid(row=0, column=0, sticky="nw")
     self.viewport = AppOgl(
@@ -288,19 +288,19 @@ class App(tk.Tk):
     self.hScale = BoxScaler(self,self.viewport,self.sidebar,"horizontal")
     self.hScale.grid(row=0, column=1, sticky="nsew")
 
-    # bottom bars test
-    self.bottombar = ttk.Frame(self,relief= Ste.FRAME_RELIEF.value, padding=Ste.PAD.value)
-    self.bottombar.grid(row=2,column=0,columnspan = 3,sticky="nsew")
-    BoxScaler(self,self.viewport,self.bottombar,"vertical").grid(row=1, column=0, columnspan=3, sticky="nsew")
-    self.bottombar1 = ttk.Frame(self,relief= Ste.FRAME_RELIEF.value, padding=Ste.PAD.value)
-    self.bottombar1.grid(row=4,column=0,columnspan = 3,sticky="nsew")
-    BoxScaler(self,self.bottombar,self.bottombar1,"vertical").grid(row=3, column=0, columnspan=3, sticky="nsew")
-    self.bottombar.grid_rowconfigure(index=(0,),weight=1)
-    self.bottombar1.grid_rowconfigure(index=(0,),weight=1)
-    self.bottombar.grid_columnconfigure(index=(0,),weight=1)
-    self.bottombar1.grid_columnconfigure(index=(0,),weight=1)
-    ttk.Label(self.bottombar,text="test bottombar rescale").grid(row=0,column=0,sticky="nsew")
-    ttk.Label(self.bottombar1,text="test bottombar1 rescale").grid(row=0,column=0,sticky="nsew")
+    # # bottom bars test
+    # self.bottombar = ttk.Frame(self,relief= Ste.FRAME_RELIEF.value, padding=Ste.PAD.value)
+    # self.bottombar.grid(row=2,column=0,columnspan = 3,sticky="nsew")
+    # BoxScaler(self,self.viewport,self.bottombar,"vertical").grid(row=1, column=0, columnspan=3, sticky="nsew")
+    # self.bottombar1 = ttk.Frame(self,relief= Ste.FRAME_RELIEF.value, padding=Ste.PAD.value)
+    # self.bottombar1.grid(row=4,column=0,columnspan = 3,sticky="nsew")
+    # BoxScaler(self,self.bottombar,self.bottombar1,"vertical").grid(row=3, column=0, columnspan=3, sticky="nsew")
+    # self.bottombar.grid_rowconfigure(index=(0,),weight=1)
+    # self.bottombar1.grid_rowconfigure(index=(0,),weight=1)
+    # self.bottombar.grid_columnconfigure(index=(0,),weight=1)
+    # self.bottombar1.grid_columnconfigure(index=(0,),weight=1)
+    # ttk.Label(self.bottombar,text="test bottombar rescale").grid(row=0,column=0,sticky="nsew")
+    # ttk.Label(self.bottombar1,text="test bottombar1 rescale").grid(row=0,column=0,sticky="nsew")
 
     self.viewport.mainloop()
 
@@ -344,6 +344,7 @@ class App(tk.Tk):
     data = GL.glReadPixels(0, 0, window_size[0], window_size[1], GL.GL_RGBA, GL.GL_UNSIGNED_BYTE)
     image = Image.frombytes("RGBA", (window_size[0], window_size[1]), data)
     image = ImageOps.flip(image) # in my case image is flipped top-bottom for some reason
+    self.setOutputfilePath()
     path = Path(self.outputfile_path.get())
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, 'PNG')
