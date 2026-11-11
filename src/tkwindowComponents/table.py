@@ -15,6 +15,8 @@ class Tablerone(ttk.Frame):
       self.table[i].append(args[i])
       if args[i] is not None:
         args[i].grid(row=nextRow, column=i, sticky="nsew", padx=2, pady=2)
+      elif i > 0:
+        args[i-1].grid(columnspan = args[i-1].grid_info().get("columnspan",1) + 1)
     return nextRow
 
   def none(self):
