@@ -552,7 +552,6 @@ class App(tk.Tk):
 
   def change_lighting(self, event):
     value = event.widget.get()
-    logger.debug("%s lighting selected.", value)
     self.viewport.select_program(value)
 
   def change_material(self, event):
