@@ -3,7 +3,7 @@ import numpy as np
 from tkinter import ttk
 from OpenGL import GL
 from pyopengltk import OpenGLFrame
-import time, sys, datetime, importlib, pkgutil, logging
+import time, sys, datetime, importlib, pkgutil, logging, json
 from pathlib import Path
 from PIL import Image, ImageOps
 
@@ -292,6 +292,27 @@ class App(tk.Tk):
         command=self.change_pipeline_mode,
       ),
     )
+    BoxScaler(self,self.viewport,self.sidebar,"horizontal").grid(row=0, column=1, sticky="nsew")
+    self.cocopath_var = tk.StringVar(self,value="./output/coco.json")
+    self.coco_dict = {}
+    self.coco_path = self.cocopath_var.get()
+    self.table.newRow(
+      self.table.label(text="Coco file path:"),
+      )
+    self.table.newRow(
+      self.table.entry(
+        id="cocoPath",
+        textvariable=self.cocopath_var,
+      ),
+      self.table.button(
+        id="loadCocoPath",
+        text = "Load",
+        command = self.loadCoco
+      )
+    )
+    self.loadCoco()  
+    
+    self.bindKeyboardInputs()
 
     self.after(100, self.viewport.printContext)
     self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -301,6 +322,23 @@ class App(tk.Tk):
     self.bindKeyboardInputs()
 
     self.viewport.mainloop()
+  def addToCoco(self):
+    pass
+  def loadCoco(self):
+    try:
+      with open(self.cocopath_var.get(), 'r') as f:
+        input = json.load(f)
+        self.coco_dict["images"      ] = input.get("images"      ,[])
+        self.coco_dict["annotations" ] = input.get("annotations" ,[])
+        self.coco_dict["categories " ] = input.get("categories " ,[])
+        self.coco_path = self.cocopath_var.get()
+    except FileNotFoundError:
+      with open(self.cocopath_var.get(), "w") as f:
+        f.write("{}")
+      self.loadCoco()
+    except Exception() as e:
+      logger.error(e)
+      return
 
   def bindKeyboardInputs(self):
     inputGate = lambda: isinstance(self.focus_get(),ttk.Entry) and not isinstance(self.focus_get(),ttk.Combobox)
