@@ -303,8 +303,9 @@ class App(tk.Tk):
     self.viewport.mainloop()
 
   def bindKeyboardInputs(self):
+    inputGate = lambda: isinstance(self.focus_get(),ttk.Entry) and not isinstance(self.focus_get(),ttk.Combobox)
     # janky hack
-    sp = lambda v: self.lighting_var.set(v) or self.viewport.select_program(v)
+    sp = lambda v: inputGate() or self.lighting_var.set(v) or self.viewport.select_program(v)
     # Flat shading
     self.bind("<Key-f>", lambda _: sp("flat"))
     # Goureaud shading
@@ -318,105 +319,46 @@ class App(tk.Tk):
     # Unwrap
     self.bind("<Key-u>", lambda _: sp("unwrap"))
     # Texture
-    self.bind(
-      "<Key-t>",
-      lambda _: self.texture_var.set(not self.texture_var.get()) or self.change_color_mode(),
-    )
+    self.bind("<Key-t>",lambda _: inputGate() or self.texture_var.set(not self.texture_var.get()) or self.change_color_mode())
     # Wireframe
-    self.bind(
-      "<Key-w>",
-      lambda _: self.wireframe_var.set(not self.wireframe_var.get()) or self.change_wireframe(),
-    )
+    self.bind("<Key-w>",lambda _: inputGate() or self.wireframe_var.set(not self.wireframe_var.get()) or self.change_wireframe())
     # Backface culling
-    self.bind(
-      "<Key-c>",
-      lambda _: (
-        self.backface_culling_var.set(not self.backface_culling_var.get())
-        or self.change_backface_culling()
-      ),
-    )
+    self.bind("<Key-c>",lambda _: inputGate() or self.backface_culling_var.set(not self.backface_culling_var.get()) or self.change_backface_culling())
     # Save image
-    self.bind("<Key-s>", lambda _: self.saveImage())
+    self.bind("<Key-s>",lambda _: inputGate() or self.saveImage())
     # Kill
-    self.bind("<Escape>", lambda _: self.destroy())
-    # self.bind("<Key-q>",lambda _: self.destroy()) # misclicked q one too many times, I'm turning ts off
+    self.bind("<Escape>", lambda _: self.focus_set() if inputGate() else self.destroy())
     # Render modes:
-    renderMode = self.table.get(id="pipeline_mode")  # leave it to me to write horror type shift
-    crm = lambda: (
-      self.pipeline_mode_var.set(
-        renderMode["values"][
-          (renderMode["values"].index(renderMode.get()) + 1) % len(renderMode["values"])
-        ]
-      )
-      or self.change_pipeline_mode(None, force=self.pipeline_mode_var.get())
-    )
-    self.bind("<Key-r>", lambda _: crm())
-
+    renderMode = self.table.get(id="pipeline_mode") # leave it to me to write horror type shift
+    crm = lambda: self.pipeline_mode_var.set(renderMode['values'][(renderMode['values'].index(renderMode.get()) + 1) % len(renderMode['values'])]) or self.change_pipeline_mode(None, force = self.pipeline_mode_var.get() )
+    self.bind("<Key-r>",lambda _: inputGate() or crm())
     # help
-    self.helpTable = Tablerone(self, col=2)
-    self.helpTable.grid(row=0, column=0, sticky="nw")
-    self.helpTable_var = tk.BooleanVar(self, value=True)
+    self.helpTable = Tablerone(self,col=2)
+    self.helpTable.grid(row=0,column=0,sticky="ne")
+    self.helpTable_var = tk.BooleanVar(self,value=True)
     self.helpTable.newRow(self.helpTable.label(text="Keyboard inputs:"), self.helpTable.none())
-    self.bind("<Escape>", lambda _: self.destroy())
     self.helpTable.newRow(self.helpTable.label(text=f"{' Shader ':=^20}"), self.helpTable.none())
     self.helpTable.newRow(self.helpTable.label(text="F"), self.helpTable.label(text="flat"))
     self.helpTable.newRow(self.helpTable.label(text="G"), self.helpTable.label(text="goureaud"))
     self.helpTable.newRow(self.helpTable.label(text="P"), self.helpTable.label(text="phong"))
     self.helpTable.newRow(self.helpTable.label(text="B"), self.helpTable.label(text="blinn"))
     self.helpTable.newRow(self.helpTable.label(text="I"), self.helpTable.label(text="vertex color"))
-    self.helpTable.newRow(
-      self.helpTable.label(text="U"), self.helpTable.label(text="texture unwrap")
-    )
+    self.helpTable.newRow(self.helpTable.label(text="U"), self.helpTable.label(text="texture unwrap"))
     self.helpTable.newRow(self.helpTable.label(text=f"{' Render ':=^20}"), self.helpTable.none())
-    self.helpTable.newRow(
-      self.helpTable.label(text="T"), self.helpTable.label(text="toggle texture")
-    )
-    self.helpTable.newRow(
-      self.helpTable.label(text="W"), self.helpTable.label(text="toggle wireframe")
-    )
-    self.helpTable.newRow(
-      self.helpTable.label(text="C"), self.helpTable.label(text="toggle backface culling")
-    )
-    self.helpTable.newRow(
-      self.helpTable.label(text="R"), self.helpTable.label(text="rendering modes")
-    )
+    self.helpTable.newRow(self.helpTable.label(text="T"), self.helpTable.label(text="toggle texture"))
+    self.helpTable.newRow(self.helpTable.label(text="W"), self.helpTable.label(text="toggle wireframe"))
+    self.helpTable.newRow(self.helpTable.label(text="C"), self.helpTable.label(text="toggle backface culling"))
+    self.helpTable.newRow(self.helpTable.label(text="R"), self.helpTable.label(text="rendering modes"))
     self.helpTable.newRow(self.helpTable.label(text=f"{' Other ':=^20}"), self.helpTable.none())
     self.helpTable.newRow(self.helpTable.label(text="S"), self.helpTable.label(text="save image"))
-    self.helpTable.newRow(
-      self.helpTable.label(text="Esc"), self.helpTable.label(text="exit program")
+    self.helpTable.newRow(self.helpTable.label(text="Esc"), self.helpTable.label(text="exit program"))
+    self.helpTable.newRow(self.helpTable.label(text="H"),self.helpTable.label(text="toggle this panel"))
+    self.bind("<Key-h>",lambda _: (
+      logger.debug("help panel toggled"),
+      inputGate() 
+      or self.helpTable_var.set(not self.helpTable_var.get()) 
+      or (self.helpTable.grid() if self.helpTable_var.get() else self.helpTable.grid_remove()))
     )
-    self.helpTable.newRow(
-      self.helpTable.label(text="H"), self.helpTable.label(text="toggle this panel")
-    )
-    self.bind(
-      "<Key-h>",
-      lambda _: (
-        logger.debug("help panel toggled"),
-        self.helpTable_var.set(not self.helpTable_var.get())
-        or (self.helpTable.grid() if self.helpTable_var.get() else self.helpTable.grid_remove()),
-      ),
-    )
-    # case "flat":
-    #   vert_shader = "./shaders/flat.vert"
-    #   frag_shader = "./shaders/flat.frag"
-    # case "interpolation":
-    #   vert_shader = "./shaders/interp.vert"
-    #   frag_shader = "./shaders/interp.frag"
-    # case "phong":
-    #   vert_shader = "./shaders/lighting.vert"
-    #   frag_shader = "./shaders/phong.frag"
-    # case "goureaud":
-
-    # self.scene_var = tk.StringVar(value=self.toValidFilename(init_scene))
-    # self.file_var = tk.StringVar(value="")
-    # self.lighting_var = tk.StringVar()
-    # self.material_var = tk.StringVar()
-    # self.wireframe_var = tk.BooleanVar()
-    # self.texture_var = tk.BooleanVar()
-    # self.backface_culling_var = tk.BooleanVar()
-    # self.rotation_var = tk.DoubleVar()
-    # self.nb_lights_var = tk.IntVar()
-    # self.pipeline_mode_var = tk.StringVar()
 
   def bindUpdateFilepath(self):
     doTheUpdate = lambda: self.setOutputfilePath()
