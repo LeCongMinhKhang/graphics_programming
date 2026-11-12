@@ -40,7 +40,6 @@ class Camera:
     view_pos = {
       "name": "view_pos",
       "value": (-view_value[:3, :3].T @ view_value[:3, 3]).astype(np.float32),
-      # "value": view["value"][:3, 3],
       "type": "vec3",
     }
 

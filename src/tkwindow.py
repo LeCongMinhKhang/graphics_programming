@@ -77,10 +77,10 @@ class App(tk.Tk):
     self.geometry(f"{w}x{h}+{x}+{y}")  # centers the window
     self.minsize(window_size[0], window_size[1])
 
-    # self.grid_columnconfigure(index=(0), 
+    # self.grid_columnconfigure(index=(0),
     #                           # minsize=window_size[0]
     #                           )
-    self.grid_columnconfigure(index=(0,2), weight=1000)
+    self.grid_columnconfigure(index=(0, 2), weight=1000)
     self.grid_rowconfigure(index=(0,), weight=1000)
     self.diagnostics = Diagnostics(self)
     self.diagnostics.grid(row=0, column=0, sticky="nw")
@@ -243,11 +243,7 @@ class App(tk.Tk):
     )
     self.table.newRow(
       self.table.label(text="Take screenshot:"),
-      self.table.button(
-        text = "Save Image",
-        id = "saveImage",
-        command = lambda: self.saveImage()
-      ),
+      self.table.button(text="Save Image", id="saveImage", command=lambda: self.saveImage()),
     )
     # 1<<0 = scene id
     # 1<<1 = current time
@@ -300,8 +296,7 @@ class App(tk.Tk):
     self.after(100, self.viewport.printContext)
     self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-
-    self.hScale = BoxScaler(self,self.viewport,self.sidebar,"horizontal")
+    self.hScale = BoxScaler(self, self.viewport, self.sidebar, "horizontal")
     self.hScale.grid(row=0, column=1, sticky="nsew")
     self.bindKeyboardInputs()
 
@@ -311,96 +306,103 @@ class App(tk.Tk):
     # janky hack
     sp = lambda v: self.lighting_var.set(v) or self.viewport.select_program(v)
     # Flat shading
-    self.bind("<Key-f>",lambda _: sp("flat"))
+    self.bind("<Key-f>", lambda _: sp("flat"))
     # Goureaud shading
-    self.bind("<Key-g>",lambda _: sp("goureaud"))
+    self.bind("<Key-g>", lambda _: sp("goureaud"))
     # Phong shading
-    self.bind("<Key-p>",lambda _: sp("phong"))
+    self.bind("<Key-p>", lambda _: sp("phong"))
     # Vertex color
-    self.bind("<Key-i>",lambda _: sp("interpolation"))
+    self.bind("<Key-i>", lambda _: sp("interpolation"))
     # Unwrap
-    self.bind("<Key-u>",lambda _: sp("unwrap"))
+    self.bind("<Key-u>", lambda _: sp("unwrap"))
     # Texture
-    self.bind("<Key-t>",lambda _: self.texture_var.set(not self.texture_var.get()) or self.change_color_mode())
+    self.bind(
+      "<Key-t>",
+      lambda _: self.texture_var.set(not self.texture_var.get()) or self.change_color_mode(),
+    )
     # Wireframe
-    self.bind("<Key-w>",lambda _: self.wireframe_var.set(not self.wireframe_var.get()) or self.change_wireframe())
+    self.bind(
+      "<Key-w>",
+      lambda _: self.wireframe_var.set(not self.wireframe_var.get()) or self.change_wireframe(),
+    )
     # Backface culling
-    self.bind("<Key-b>",lambda _: self.backface_culling_var.set(not self.backface_culling_var.get()) or self.change_backface_culling())
+    self.bind(
+      "<Key-b>",
+      lambda _: (
+        self.backface_culling_var.set(not self.backface_culling_var.get())
+        or self.change_backface_culling()
+      ),
+    )
     # Save image
-    self.bind("<Key-s>",lambda _: self.saveImage())
+    self.bind("<Key-s>", lambda _: self.saveImage())
     # Kill
-    self.bind("<Escape>",lambda _: self.destroy())
+    self.bind("<Escape>", lambda _: self.destroy())
     # self.bind("<Key-q>",lambda _: self.destroy()) # misclicked q one too many times, I'm turning ts off
     # Render modes:
-    renderMode = self.table.get(id="pipeline_mode") # leave it to me to write horror type shift
-    crm = lambda: self.pipeline_mode_var.set(renderMode['values'][(renderMode['values'].index(renderMode.get()) + 1) % len(renderMode['values'])]) or self.change_pipeline_mode(None, force = self.pipeline_mode_var.get() )
-    self.bind("<Key-r>",lambda _: crm())
-    
-    # help
-    self.helpTable = Tablerone(self,col=2)
-    self.helpTable.grid(row=0,column=0,sticky="nw")
-    self.helpTable_var = tk.BooleanVar(self,value=True)
-    self.helpTable.newRow(
-      self.helpTable.label(text="Keyboard inputs:"), self.helpTable.none()
+    renderMode = self.table.get(id="pipeline_mode")  # leave it to me to write horror type shift
+    crm = lambda: (
+      self.pipeline_mode_var.set(
+        renderMode["values"][
+          (renderMode["values"].index(renderMode.get()) + 1) % len(renderMode["values"])
+        ]
+      )
+      or self.change_pipeline_mode(None, force=self.pipeline_mode_var.get())
     )
-    self.bind("<Escape>",lambda _: self.destroy())
+    self.bind("<Key-r>", lambda _: crm())
+
+    # help
+    self.helpTable = Tablerone(self, col=2)
+    self.helpTable.grid(row=0, column=0, sticky="nw")
+    self.helpTable_var = tk.BooleanVar(self, value=True)
+    self.helpTable.newRow(self.helpTable.label(text="Keyboard inputs:"), self.helpTable.none())
+    self.bind("<Escape>", lambda _: self.destroy())
+    self.helpTable.newRow(self.helpTable.label(text=f"{' Shader ':=^20}"), self.helpTable.none())
+    self.helpTable.newRow(self.helpTable.label(text="F"), self.helpTable.label(text="flat"))
+    self.helpTable.newRow(self.helpTable.label(text="G"), self.helpTable.label(text="goureaud"))
+    self.helpTable.newRow(self.helpTable.label(text="P"), self.helpTable.label(text="phong"))
+    self.helpTable.newRow(self.helpTable.label(text="I"), self.helpTable.label(text="vertex color"))
     self.helpTable.newRow(
-      self.helpTable.label(text = f"{" Shader ":=^20}"),
-      self.helpTable.none())
+      self.helpTable.label(text="U"), self.helpTable.label(text="texture unwrap")
+    )
+    self.helpTable.newRow(self.helpTable.label(text=f"{' Render ':=^20}"), self.helpTable.none())
     self.helpTable.newRow(
-      self.helpTable.label(text = "F")   ,
-      self.helpTable.label(text="flat"))
+      self.helpTable.label(text="T"), self.helpTable.label(text="toggle texture")
+    )
     self.helpTable.newRow(
-      self.helpTable.label(text = "G")   ,
-      self.helpTable.label(text="goureaud"))
+      self.helpTable.label(text="W"), self.helpTable.label(text="toggle wireframe")
+    )
     self.helpTable.newRow(
-      self.helpTable.label(text = "P")   ,
-      self.helpTable.label(text="phong"))
+      self.helpTable.label(text="B"), self.helpTable.label(text="toggle backface culling")
+    )
     self.helpTable.newRow(
-      self.helpTable.label(text = "I")   ,
-      self.helpTable.label(text="vertex color"))
+      self.helpTable.label(text="R"), self.helpTable.label(text="rendering modes")
+    )
+    self.helpTable.newRow(self.helpTable.label(text=f"{' Other ':=^20}"), self.helpTable.none())
+    self.helpTable.newRow(self.helpTable.label(text="S"), self.helpTable.label(text="save image"))
     self.helpTable.newRow(
-      self.helpTable.label(text = "U")   ,
-      self.helpTable.label(text="texture unwrap"))
+      self.helpTable.label(text="Esc"), self.helpTable.label(text="exit program")
+    )
     self.helpTable.newRow(
-      self.helpTable.label(text =f"{" Render ":=^20}" ),
-      self.helpTable.none())
-    self.helpTable.newRow(
-      self.helpTable.label(text = "T")   ,
-      self.helpTable.label(text="toggle texture"))
-    self.helpTable.newRow(
-      self.helpTable.label(text = "W")   ,
-      self.helpTable.label(text="toggle wireframe"))
-    self.helpTable.newRow(
-      self.helpTable.label(text = "B")   ,
-      self.helpTable.label(text="toggle backface culling"))
-    self.helpTable.newRow(
-      self.helpTable.label(text = "R")   ,
-      self.helpTable.label(text="rendering modes"))
-    self.helpTable.newRow(
-      self.helpTable.label(text =f"{" Other ":=^20}"),
-      self.helpTable.none())
-    self.helpTable.newRow(
-      self.helpTable.label(text = "S")   ,
-      self.helpTable.label(text="save image"))
-    self.helpTable.newRow(
-      self.helpTable.label(text = "Esc") ,
-      self.helpTable.label(text="exit program"))
-    self.helpTable.newRow(
-      self.helpTable.label(text = "H")   ,
-      self.helpTable.label(text="toggle this panel"))
-    self.bind("<Key-h>",lambda _: self.helpTable_var.set(not self.helpTable_var.get()) or (self.helpTable.grid() if self.helpTable_var.get() else self.helpTable.grid_remove()))
-      # case "flat":
-      #   vert_shader = "./shaders/flat.vert"
-      #   frag_shader = "./shaders/flat.frag"
-      # case "interpolation":
-      #   vert_shader = "./shaders/interp.vert"
-      #   frag_shader = "./shaders/interp.frag"
-      # case "phong":
-      #   vert_shader = "./shaders/lighting.vert"
-      #   frag_shader = "./shaders/phong.frag"
-      # case "goureaud":
-    
+      self.helpTable.label(text="H"), self.helpTable.label(text="toggle this panel")
+    )
+    self.bind(
+      "<Key-h>",
+      lambda _: (
+        self.helpTable_var.set(not self.helpTable_var.get())
+        or (self.helpTable.grid() if self.helpTable_var.get() else self.helpTable.grid_remove())
+      ),
+    )
+    # case "flat":
+    #   vert_shader = "./shaders/flat.vert"
+    #   frag_shader = "./shaders/flat.frag"
+    # case "interpolation":
+    #   vert_shader = "./shaders/interp.vert"
+    #   frag_shader = "./shaders/interp.frag"
+    # case "phong":
+    #   vert_shader = "./shaders/lighting.vert"
+    #   frag_shader = "./shaders/phong.frag"
+    # case "goureaud":
+
     # self.scene_var = tk.StringVar(value=self.toValidFilename(init_scene))
     # self.file_var = tk.StringVar(value="")
     # self.lighting_var = tk.StringVar()
@@ -453,9 +455,18 @@ class App(tk.Tk):
     self.outputfile_opt.set(opt ^ (1 << offset))
 
   def saveImage(self):
-    data = GL.glReadPixels(0, 0, self.viewport.window_size[0], self.viewport.window_size[1], GL.GL_RGBA, GL.GL_UNSIGNED_BYTE)
-    image = Image.frombytes("RGBA", (self.viewport.window_size[0], self.viewport.window_size[1]), data)
-    image = ImageOps.flip(image) # in my case image is flipped top-bottom for some reason
+    data = GL.glReadPixels(
+      0,
+      0,
+      self.viewport.window_size[0],
+      self.viewport.window_size[1],
+      GL.GL_RGBA,
+      GL.GL_UNSIGNED_BYTE,
+    )
+    image = Image.frombytes(
+      "RGBA", (self.viewport.window_size[0], self.viewport.window_size[1]), data
+    )
+    image = ImageOps.flip(image)  # in my case image is flipped top-bottom for some reason
     self.setOutputfilePath()
     path = Path(self.outputfile_path.get())
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -660,8 +671,9 @@ class AppOgl(OpenGLFrame):
       # "unwrap": -1,
       "flat": -1,
       "interpolation": -1,
-      "phong": -1,
       "goureaud": -1,
+      "phong": -1,
+      "blinn": -1,
     }
     self.materials = {
       "default": np.array(
@@ -804,9 +816,12 @@ class AppOgl(OpenGLFrame):
     self.start_time = time.time()
     self.old_time = self.start_time
     self.new_time = self.old_time
-    super().__init__(root, *args,
-                      # width=self.window_size[0], height=self.window_size[1], 
-                      **kw)
+    super().__init__(
+      root,
+      *args,
+      # width=self.window_size[0], height=self.window_size[1],
+      **kw,
+    )
     self.bind("<Motion>", self.on_drag)
     self.bind("<Button-1>", self.on_mouse)
     self.bind("<ButtonRelease-1>", self.on_mouse)
@@ -823,10 +838,12 @@ class AppOgl(OpenGLFrame):
         logger.error("system platform %s not recognized", sys.platform)
         exit(1)
     self.animate = 1
-  
-  def setDimension(self,event):
-    self.window_size = [event.width,event.height]
-    self.default_static_uniforms[0]["value"] = np.array([event.width,event.height], dtype=np.float32)
+
+  def setDimension(self, event):
+    self.window_size = [event.width, event.height]
+    self.default_static_uniforms[0]["value"] = np.array(
+      [event.width, event.height], dtype=np.float32
+    )
     GL.glViewport(0, 0, self.window_size[0], self.window_size[1])
 
   def on_drag(self, event):
@@ -971,7 +988,10 @@ class AppOgl(OpenGLFrame):
       case "goureaud":
         vert_shader = "./shaders/goureaud.vert"
         frag_shader = "./shaders/goureaud.frag"
-      case "unwrap": # super secret evil program
+      case "blinn":
+        vert_shader = "./shaders/lighting.vert"
+        frag_shader = "./shaders/blinn.frag"
+      case "unwrap":  # super secret evil program
         vert_shader = "./shaders/unwrap.vert"
         frag_shader = "./shaders/interp.frag"
       case _:
@@ -1233,7 +1253,7 @@ class AppOgl(OpenGLFrame):
       bounding_boxes = []
       for obj_id, obj_name in self.objects_rendered.items():
         frame_array = self.pipeline.render_to_array(
-          uniforms=uniforms, to_draw=[obj_id], mode="masks", size = self.window_size
+          uniforms=uniforms, to_draw=[obj_id], mode="masks", size=self.window_size
         )
         # TODO: get bounding box on low res for perf
         bounding_boxes.append((obj_name, get_bounding_box(frame_array)))
