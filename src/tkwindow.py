@@ -354,10 +354,10 @@ class App(tk.Tk):
     self.helpTable.newRow(self.helpTable.label(text="Esc"), self.helpTable.label(text="exit program"))
     self.helpTable.newRow(self.helpTable.label(text="H"),self.helpTable.label(text="toggle this panel"))
     self.bind("<Key-h>",lambda _: (
-      logger.debug("help panel toggled"),
       inputGate() 
       or self.helpTable_var.set(not self.helpTable_var.get()) 
       or (self.helpTable.grid() if self.helpTable_var.get() else self.helpTable.grid_remove()))
+      or logger.debug("help panel toggled")
     )
 
   def bindUpdateFilepath(self):
