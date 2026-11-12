@@ -311,6 +311,8 @@ class App(tk.Tk):
     self.bind("<Key-g>", lambda _: sp("goureaud"))
     # Phong shading
     self.bind("<Key-p>", lambda _: sp("phong"))
+    # Blinn shading
+    self.bind("<Key-b>", lambda _: sp("blinn"))
     # Vertex color
     self.bind("<Key-i>", lambda _: sp("interpolation"))
     # Unwrap
@@ -327,7 +329,7 @@ class App(tk.Tk):
     )
     # Backface culling
     self.bind(
-      "<Key-b>",
+      "<Key-c>",
       lambda _: (
         self.backface_culling_var.set(not self.backface_culling_var.get())
         or self.change_backface_culling()
@@ -360,6 +362,7 @@ class App(tk.Tk):
     self.helpTable.newRow(self.helpTable.label(text="F"), self.helpTable.label(text="flat"))
     self.helpTable.newRow(self.helpTable.label(text="G"), self.helpTable.label(text="goureaud"))
     self.helpTable.newRow(self.helpTable.label(text="P"), self.helpTable.label(text="phong"))
+    self.helpTable.newRow(self.helpTable.label(text="B"), self.helpTable.label(text="blinn"))
     self.helpTable.newRow(self.helpTable.label(text="I"), self.helpTable.label(text="vertex color"))
     self.helpTable.newRow(
       self.helpTable.label(text="U"), self.helpTable.label(text="texture unwrap")
@@ -372,7 +375,7 @@ class App(tk.Tk):
       self.helpTable.label(text="W"), self.helpTable.label(text="toggle wireframe")
     )
     self.helpTable.newRow(
-      self.helpTable.label(text="B"), self.helpTable.label(text="toggle backface culling")
+      self.helpTable.label(text="C"), self.helpTable.label(text="toggle backface culling")
     )
     self.helpTable.newRow(
       self.helpTable.label(text="R"), self.helpTable.label(text="rendering modes")
@@ -388,8 +391,9 @@ class App(tk.Tk):
     self.bind(
       "<Key-h>",
       lambda _: (
+        logger.debug("help panel toggled"),
         self.helpTable_var.set(not self.helpTable_var.get())
-        or (self.helpTable.grid() if self.helpTable_var.get() else self.helpTable.grid_remove())
+        or (self.helpTable.grid() if self.helpTable_var.get() else self.helpTable.grid_remove()),
       ),
     )
     # case "flat":
@@ -471,6 +475,7 @@ class App(tk.Tk):
     path = Path(self.outputfile_path.get())
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, "PNG")
+    logger.debug('saved opengl frame at "%s"', path)
 
   def on_close(self):
     self.viewport.animate = 0  # stop the redraw loop
@@ -949,7 +954,7 @@ class AppOgl(OpenGLFrame):
 
   def select_program(self, name):
     # for each rendered object, update it with selected shaders/program
-    print(name)
+    logger.debug("%s shading program selected", name)
     for idx, _ in self.objects_rendered.items():
       self.update_object(idx, program=name)
     self.update_static_uniforms(update_lights=True)
