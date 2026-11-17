@@ -675,7 +675,7 @@ It is a `.json` file given by the following format:
 )
 For the sake of simplicity in this project, we will only be filling out the neccessary fields `"images"`,`"annotations"`,`"categories"`.
 
-Upon the program's load, it will load up in memory a dictionary copy of the coco file located at `./outputs/coco.json`, or the user may load a different file with a specified file path.
+Before you can export labels and images, the user needs to load coco.json file with a specified file path. By default, this file is located at `./outputs/coco.json`
 
 === Images
 Upon a press of a button, the `viewport` will capture the current frame displayed and a list of bounding boxes generated from the `labeling` system.

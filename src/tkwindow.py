@@ -294,7 +294,7 @@ class App(tk.Tk):
     )
     BoxScaler(self,self.viewport,self.sidebar,"horizontal").grid(row=0, column=1, sticky="nsew")
     self.cocopath_var = tk.StringVar(self,value="./output/coco.json")
-    self.coco_dict = {}
+    self.coco_dict = None
     self.coco_path = self.cocopath_var.get()
     self.table.newRow(
       self.table.label(text="Coco file path:"),
@@ -312,7 +312,6 @@ class App(tk.Tk):
         command = lambda: self.viewport.evilMessedUpPrograming.set(True)
       )
     )
-    self.loadCoco()  
     
     self.bindKeyboardInputs()
 
@@ -329,9 +328,11 @@ class App(tk.Tk):
       with open(self.cocopath_var.get(), 'r') as f:
         logger.debug("Loaded coco at: "+self.cocopath_var.get())
         input = json.load(f)
-        self.coco_dict["images"      ] = input.get("images"      ,[])
-        self.coco_dict["annotations" ] = input.get("annotations" ,[])
-        self.coco_dict["categories"  ] = input.get("categories"  ,[])
+        self.coco_dict = {
+          "images"      : input.get("images"      ,[]),
+          "annotations" : input.get("annotations" ,[]),
+          "categories"  : input.get("categories"  ,[]),
+        }
         self.coco_path = self.cocopath_var.get()
     except FileNotFoundError:
       Path(self.cocopath_var.get()).parent.mkdir(parents=True, exist_ok=True)
@@ -343,6 +344,9 @@ class App(tk.Tk):
       return
 
   def exportLabelAndImage(self,bounding_boxes,data):
+    if self.coco_dict is None:
+      logger.error("Load a coco file before exporting labels")
+      return
     image = ImageOps.flip(Image.frombytes("RGBA", (self.viewport.window_size[0], self.viewport.window_size[1]),data))
     image_id = len(self.coco_dict["images"])
     image_path = Path(self.coco_path).parent / f"{Path(self.coco_path).stem}_images" / f"{image_id}.png"
@@ -375,7 +379,6 @@ class App(tk.Tk):
         "bbox": a[1],
       })
 
-    
     Path(self.coco_path).parent.mkdir(parents=True, exist_ok=True)
     with open(self.coco_path, "w") as f:
       json.dump(self.coco_dict,fp = f)
