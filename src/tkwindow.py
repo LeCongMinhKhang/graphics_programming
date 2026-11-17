@@ -309,7 +309,7 @@ class App(tk.Tk):
       ),
       self.table.button(
         text = "Add to Coco",
-        command = self.exportLabelAndImage
+        command = lambda: self.viewport.evilMessedUpPrograming.set(True)
       )
     )
     self.loadCoco()  
@@ -327,6 +327,7 @@ class App(tk.Tk):
   def loadCoco(self):
     try:
       with open(self.cocopath_var.get(), 'r') as f:
+        logger.debug("Loaded coco at: "+self.cocopath_var.get())
         input = json.load(f)
         self.coco_dict["images"      ] = input.get("images"      ,[])
         self.coco_dict["annotations" ] = input.get("annotations" ,[])
@@ -675,6 +676,7 @@ class AppOgl(OpenGLFrame):
     self.objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
     self.objects_rendered = {}  # set containing the indices of the pipeline objects to be rendered associated with the object name
     self.evilMessedUpPrograming = tk.BooleanVar(value = False)
+    self.evilMessedUpPrograming.trace_add(mode="write",callback = lambda a,b,m: logger.debug("Saving to coco") if m =="write" and self.evilMessedUpPrograming.get() else None)
     self.nb_lights = 1
     self.update_lights(self.nb_lights)
 
