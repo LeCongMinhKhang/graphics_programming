@@ -4,7 +4,7 @@
 
 #let coursename = "Computer Graphics"
 #let reporttype = "Progress Report"
-#let report-title = "Assignement 1"
+#let report-title = "Assignement 2"
 #let advisor = "Trần Thị Ngọc Trâm"
 #let students = (
   ("Lê Công Minh Khang", "2252295"),
@@ -653,6 +653,70 @@ This panel supports mouse interaction through the use of camera: the user can ch
 The right panel provides the ability for the user to change the scene itself. They can select a predefined scene or import an `.obj` file under the "Scene" section. The "Lighting" option apply a given shading program to every object in the scene (some scenes may have objects with different programs). Other options allow the user to change the number of lights, enable wireframe mode or change the rotation speed of the scene.
 
 The GUI window is implemented thanks to the python module Tkinter.
+
+
+
+== Common Objects in Context (COCO) dataset format
+=== COCO file
+COCO is a dataset involving a annotation file and a large set of images that the file describes.
+It is a `.json` file given by the following format:
+
+#figure(
+  ```json
+{
+  "info": {},         // Optional
+  "licenses": [],     // Optional
+  "images": [],
+  "annotations": [],
+  "categories": []
+}
+  ```,
+  caption: [Annotation file adapted from https://docs.aws.amazon.com/rekognition/latest/customlabels-dg/md-coco-overview.html],
+)
+For the sake of simplicity in this project, we will only be filling out the neccessary fields `"images"`,`"annotations"`,`"categories"`.
+
+Upon the program's load, it will load up in memory a dictionary copy of the coco file located at `./outputs/coco.json`, or the user may load a different file with a specified file path.
+
+=== Images
+Upon a press of a button, the `viewport` will capture the current frame displayed and a list of bounding boxes generated from the `labeling` system.
+This data is then used to build up an image information list
+```python
+coco_image = {
+  "id"            : image_id,  
+  "width"         : self.viewport.window_size[0],
+  "height"        : self.viewport.window_size[1],
+  "file_name"     : Path(image_path).name,
+  "date_captured" : datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+}
+```
+Where `"id"` is generated from taking the total number of images in the dataset,
+`"file_name"` will be the image's id, and the rest of the fields are self explainatory.
+We recognize the possibilty of having duplicates in hopes that the dateset will only ever be added to.
+
+Then, this image data is appended to the dictionary copy, along with the image file itself being saved to a folder in the same directory as the coco file with the same name.
+
+=== Categories
+We are assuming that "categories" are reused when describing objects of the same kind in images (so if a scene contains multiple copy of the same object, they will use the same category in their annotations).
+Each category object follows this format.
+```python
+cat = {
+    "id"   : cat_id,  # Category id is also generated based on the existing categories count
+    "name" : c        # Name is captured directly from the labeling system 
+}
+```
+From each bounding box and object name pairs given by the `labeling` system, we check if the coco dataset already contain a category with that name, and add a new one of not, then a translation dictionary between the category name and id `cat_dict` is created to be used in the annotation phase. 
+
+=== Annotations
+With the given bounding box and object name pairs, the image id, the category name-id dictionary from previous sections, we can construct annotation objects:
+```python
+for a in bounding_boxes:
+  self.coco_dict["annotations"].append({
+    "category_id" : cat_dict[a[0]], # a[0] contains the object name
+    "image_id"    : image_id,
+    "bbox"        : a[1],           # a[1] has the bounding box information
+  })
+```
+Finally, the dictionary copy, now with new labels and data, gets JSON encoded and written to the `coco.json` file
 
 // = Performance
 
