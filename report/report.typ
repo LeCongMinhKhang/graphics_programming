@@ -654,7 +654,24 @@ The right panel provides the ability for the user to change the scene itself. Th
 
 The GUI window is implemented thanks to the python module Tkinter.
 
-
+== Keyboard bindings
+Tkinter allows users to bind functions to different key presses via the following format
+```python
+tkElement.bind("<key/mouse_action>", command = function())
+```
+Using this we implement a few bindings:
+- `"<Mouse>"`: `trackball` camera orbit, zoom, and pan
+- `"<KeyPress-Control_L>"`/`"<KeyRelease-Control_L>"`: Modifier key to speed up camera zoom and pan speed
+- `"<Key-Control_L>"`/`"<KeyRelease-Control_L>"`: Modifier key to speed up camera zoom and pan speed
+- `"<Key-f>"`/`"<Key-g>"`/`"<Key-p>"`/`"<Key-b>"`/`"<Key-i>"`/`"<Key-u>"`: Switching between shading modes, similar to CGLibs' bindings
+- `"<Key-t>"`: Toggle Texture rendering
+- `"<Key-w>"`: Toggle Wireframe mode
+- `"<Key-c>"`: Toggle Backface culling
+- `"<Key-s>"`: Save an image to the specified directory
+- `"<Key-l>"`: Export image and labeling to the COCO dataset
+- `"<Key-h>"`: Toggle the help menu
+- `"<F11>"`: Toggle Sidebar
+- `"<Escape>"`: Exit out of entry text box or close the program
 
 == Common Objects in Context (COCO) dataset format
 === COCO file

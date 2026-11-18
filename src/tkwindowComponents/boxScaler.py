@@ -36,12 +36,13 @@ class BoxScaler(ttk.Frame):
 
   def hold(self,event):
     if self.isHold: return
-    self.pos0 = self.dirred(event.x,event.y)
     self.isHold = True
+    self.pos0 = self.dirred(event.x,event.y)
   
 
   def unhold(self,event):
     if not self.isHold: return
+    self.isHold = False
     
     pxSizeA = self.dirred(self.A.winfo_width, self.A.winfo_height)()
     pxSizeB = self.dirred(self.B.winfo_width, self.B.winfo_height)()
@@ -53,9 +54,7 @@ class BoxScaler(ttk.Frame):
     weightTotal = weightA + weightB
 
     deltaPos = self.dirred(event.x - self.pos0,event.y - self.pos0)
-    deltaWeight = min(max(-weightA,deltaPos*weightTotal//pxTotal),weightB)
+    deltaWeight = min(max(-weightA,(deltaPos*weightTotal)//pxTotal),weightB)
     
     self.dirred(self.parent.grid_columnconfigure,self.parent.grid_rowconfigure)(index=(sideA,),weight=weightA + deltaWeight)
     self.dirred(self.parent.grid_columnconfigure,self.parent.grid_rowconfigure)(index=(sideB,),weight=weightB - deltaWeight)
-
-    self.isHold = False

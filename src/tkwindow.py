@@ -113,6 +113,7 @@ class App(tk.Tk):
     # UI definition
     self.sidebar = ScrollableList(self)
     self.sidebar.grid(row=0, column=2, sticky="nsew")
+    self.sidebar.lower(self.viewport)
     self.sidebar.frameframe.grid_columnconfigure(index=(0,), weight=1)
 
     self.table = Tablerone(self.sidebar.frameframe, col=2)
@@ -292,7 +293,9 @@ class App(tk.Tk):
         command=self.change_pipeline_mode,
       ),
     )
-    BoxScaler(self,self.viewport,self.sidebar,"horizontal").grid(row=0, column=1, sticky="nsew")
+    self.bs = BoxScaler(self,self.viewport,self.sidebar,"horizontal")
+    self.bs.grid(row=0, column=1, sticky="nsew")
+    
     self.cocopath_var = tk.StringVar(self,value="./output/coco.json")
     self.coco_dict = None
     self.coco_path = self.cocopath_var.get()
@@ -317,8 +320,6 @@ class App(tk.Tk):
 
     self.after(100, self.viewport.printContext)
     self.protocol("WM_DELETE_WINDOW", self.on_close)
-
-    BoxScaler(self, self.viewport, self.sidebar, "horizontal").grid(row=0, column=1, sticky="nsew")
 
     self.viewport.mainloop()
   def addToCoco(self):
@@ -387,6 +388,7 @@ class App(tk.Tk):
     inputGate = lambda: (
       isinstance(self.focus_get(), ttk.Entry) and not isinstance(self.focus_get(), ttk.Combobox)
     )
+    
     # janky hack
     sp = lambda v: inputGate() or self.lighting_var.set(v) or self.viewport.select_program(v)
     # Flat shading
@@ -443,65 +445,58 @@ class App(tk.Tk):
       or self.change_pipeline_mode(None, force=self.pipeline_mode_var.get())
     )
     self.bind("<Key-r>", lambda _: inputGate() or crm())
+    # full viewport
+    showhideSidebar = tk.BooleanVar(self,False)
+    def toggleShowhideSidebar(self):
+      showhideSidebar.set(not showhideSidebar.get())
+      if showhideSidebar.get():
+        self.viewport.grid(columnspan=3)
+        self.helpTable.grid(column = 3) 
+        self.bs.grid_remove()
+      else:
+        self.viewport.grid(columnspan=1)
+        self.helpTable.grid(column = 0) 
+        self.bs.grid()
+      self.helpTable.grid_remove() if not self.helpTable_var.get() else None
+    self.bind("<F11>", lambda _: toggleShowhideSidebar(self))
+    self.bind("<KeyPress-Control_L>",   lambda event: (self.viewport.mouse.update({"ctrl_down": True }),logger.debug("Ctrl down")) if not self.viewport.mouse["ctrl_down"] else None)
+    self.bind("<KeyRelease-Control_L>", lambda event: (self.viewport.mouse.update({"ctrl_down": False}),logger.debug("Ctrl up"  )) if self.viewport.mouse["ctrl_down"] else None)
     # help
     self.helpTable = Tablerone(self, col=2)
-    self.helpTable.grid(row=0, column=0, sticky="ne")
+    self.helpTable.grid(row=0, column=0,sticky="ne")
     self.helpTable_var = tk.BooleanVar(self, value=True)
-    self.helpTable.newRow(self.helpTable.label(text="Keyboard inputs:"), self.helpTable.none())
-    self.helpTable.newRow(self.helpTable.label(text=f"{' Shader ':=^20}"), self.helpTable.none())
-    self.helpTable.newRow(self.helpTable.label(text="F"), self.helpTable.label(text="flat"))
-    self.helpTable.newRow(self.helpTable.label(text="G"), self.helpTable.label(text="goureaud"))
-    self.helpTable.newRow(self.helpTable.label(text="P"), self.helpTable.label(text="phong"))
-    self.helpTable.newRow(self.helpTable.label(text="B"), self.helpTable.label(text="blinn"))
-    self.helpTable.newRow(self.helpTable.label(text="I"), self.helpTable.label(text="vertex color"))
-    self.helpTable.newRow(
-      self.helpTable.label(text="U"), self.helpTable.label(text="texture unwrap")
-    )
-    self.helpTable.newRow(self.helpTable.label(text=f"{' Render ':=^20}"), self.helpTable.none())
-    self.helpTable.newRow(
-      self.helpTable.label(text="T"), self.helpTable.label(text="toggle texture")
-    )
-    self.helpTable.newRow(
-      self.helpTable.label(text="W"), self.helpTable.label(text="toggle wireframe")
-    )
-    self.helpTable.newRow(
-      self.helpTable.label(text="C"), self.helpTable.label(text="toggle backface culling")
-    )
-    self.helpTable.newRow(
-      self.helpTable.label(text="R"), self.helpTable.label(text="rendering modes")
-    )
-    self.helpTable.newRow(self.helpTable.label(text=f"{' Other ':=^20}"), self.helpTable.none())
-    self.helpTable.newRow(self.helpTable.label(text="S"), self.helpTable.label(text="save image"))
-    self.helpTable.newRow(self.helpTable.label(text="L"), self.helpTable.label(text="add to Coco"))
-    self.helpTable.newRow(self.helpTable.label(text="Esc"), self.helpTable.label(text="exit program"))
-    self.helpTable.newRow(self.helpTable.label(text="H"),self.helpTable.label(text="toggle this panel"))
+    
+    def nr(a, b): 
+      self.helpTable.newRow(
+        self.helpTable.label(text=a), 
+        self.helpTable.label(text=b) if b is not None else 
+        self.helpTable.none())
+    nr("Keyboard inputs:", None)
+    nr(f"{' Shader ':=^20}", None)
+    nr("F"  , "flat")
+    nr("G"  , "goureaud")
+    nr("P"  , "phong")
+    nr("B"  , "blinn")
+    nr("I"  , "vertex color")
+    nr("U"  , "texture unwrap")
+    nr(f"{' Render ':=^20}", None)
+    nr("T"  , "toggle texture")
+    nr("W"  , "toggle wireframe")
+    nr("C"  , "toggle backface culling")
+    nr("R"  , "rendering modes")
+    nr(f"{' Other ':=^20}", None)
+    nr("S"  , "save image")
+    nr("L"  , "add to Coco")
+    nr("Esc", "exit program")
+    nr("f11", "toggle sidebar")
+    nr("ctrl","zoom & pan speed x10")
+    nr("H"  , "toggle this panel")
     self.bind("<Key-h>",lambda _: (
       inputGate() 
       or self.helpTable_var.set(not self.helpTable_var.get()) 
       or (self.helpTable.grid() if self.helpTable_var.get() else self.helpTable.grid_remove()))
       or logger.debug("help panel toggled")
     )
-    # case "flat":
-    #   vert_shader = "./shaders/flat.vert"
-    #   frag_shader = "./shaders/flat.frag"
-    # case "interpolation":
-    #   vert_shader = "./shaders/interp.vert"
-    #   frag_shader = "./shaders/interp.frag"
-    # case "phong":
-    #   vert_shader = "./shaders/lighting.vert"
-    #   frag_shader = "./shaders/phong.frag"
-    # case "goureaud":
-
-    # self.scene_var = tk.StringVar(value=self.toValidFilename(init_scene))
-    # self.file_var = tk.StringVar(value="")
-    # self.lighting_var = tk.StringVar()
-    # self.material_var = tk.StringVar()
-    # self.wireframe_var = tk.BooleanVar()
-    # self.texture_var = tk.BooleanVar()
-    # self.backface_culling_var = tk.BooleanVar()
-    # self.rotation_var = tk.DoubleVar()
-    # self.nb_lights_var = tk.IntVar()
-    # self.pipeline_mode_var = tk.StringVar()
 
   def bindUpdateFilepath(self):
     doTheUpdate = lambda: self.setOutputfilePath()
@@ -741,7 +736,6 @@ class AppOgl(OpenGLFrame):
     self.evilMessedUpPrograming.trace_add(mode="write",callback = lambda a,b,m: logger.debug("Saving to coco") if m =="write" and self.evilMessedUpPrograming.get() else None)
     self.nb_lights = 1
     self.update_lights(self.nb_lights)
-
     self.mouse = {
       "x": 0.0,
       "y": 0.0,
@@ -755,6 +749,7 @@ class AppOgl(OpenGLFrame):
       "scroll_y": 0.0,
       "scroll_delta_x": 0.0,
       "scroll_delta_y": 0.0,
+      "ctrl_down": False,
     }
     self.pipeline = None
     self.programs = {
@@ -949,7 +944,7 @@ class AppOgl(OpenGLFrame):
         case 3:
           self.mb2_callback(event.type)
         case 4:
-          self.scroll_callback(0, 5)
+          self.scroll_callback(0,  5)
         case 5:
           self.scroll_callback(0, -5)
         case _:
@@ -962,8 +957,7 @@ class AppOgl(OpenGLFrame):
     # update mb position only when a button is pressed
     if self.mouse["mb1_down"] or self.mouse["mb2_down"]:
       self.mouse["mb_x"] = xpos
-      self.mouse["mb_y"] = int(height) - ypos  # flip so y=0 is bottom
-
+      self.mouse["mb_y"] = height - ypos # flip so y=0 is bottom
   def mb1_callback(self, action):
     if action == tk.EventType.ButtonPress:
       self.mouse["mb1_down"] = True
@@ -985,8 +979,8 @@ class AppOgl(OpenGLFrame):
       self.mouse["mb2_down"] = False
 
   def scroll_callback(self, xoffset, yoffset):
-    self.mouse["scroll_x"] += xoffset
-    self.mouse["scroll_y"] += yoffset
+    self.mouse["scroll_x"] += xoffset * (10 if self.mouse["ctrl_down"] else 1)
+    self.mouse["scroll_y"] += yoffset * (10 if self.mouse["ctrl_down"] else 1)
     self.mouse["scroll_delta_x"] = xoffset
     self.mouse["scroll_delta_y"] = yoffset
 
@@ -1316,25 +1310,13 @@ class AppOgl(OpenGLFrame):
               "value": time.time() - self.start_time,
               "type": "float",
             },
-            {
-              "name": "iMouse",
-              "value": np.array(
-                [
-                  self.mouse["mb_x"],
-                  self.mouse["mb_y"],
-                  self.mouse["mb_press_x"],
-                  self.mouse["mb_press_y"],
-                ],
-                dtype=np.float32,
-              ),
-              "type": "vec4",
-            },
           ]
         ),
       )
     )
     uniforms = self.cam.update(
-      uniforms=np.concatenate((self.default_static_uniforms, uniforms)), mouse=self.mouse
+      uniforms=np.concatenate((self.default_static_uniforms, uniforms)), 
+      mouse= self.mouse
     )
 
     self.pipeline.draw(

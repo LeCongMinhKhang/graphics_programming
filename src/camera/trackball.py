@@ -77,7 +77,8 @@ class Trackball(Camera):
         if mouse["mb1_down"]:
           self.drag(self.mouse_old, (mouse["mb_x"], mouse["mb_y"]), winsize)
         elif mouse["mb2_down"]:
-          self.pan(self.mouse_old, (mouse["mb_x"], mouse["mb_y"]))
+          cd = (10 if mouse["ctrl_down"] else 1)
+          self.pan((self.mouse_old[0] * cd, self.mouse_old[1] * cd), (mouse["mb_x"] * cd, mouse["mb_y"] * cd))
         self.mouse_old = (mouse["mb_x"], mouse["mb_y"])
 
     self.zoom(mouse["scroll_y"], winsize[1])
