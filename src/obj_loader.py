@@ -4,6 +4,11 @@ import os
 from pathlib import Path
 from src.shape_generators import tools
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def parseMaterials(path):
   materials = {}
   currentMat = None
@@ -15,11 +20,23 @@ def parseMaterials(path):
       arr = string.split(" ")
       match arr[0]:
         case "newmtl":
-          materials[arr[1]] = [1,1,1]
+          materials[arr[1]] = [1, 1, 1]
           currentMat = arr[1]
         case "Kd":
-          materials[currentMat] = [arr[1],arr[2],arr[3]]
+          materials[currentMat] = [arr[1], arr[2], arr[3]]
   return materials
+
+
+def resolve(idx, n):
+  """OBJ index
+  positive: index starts at
+  negative: relative position
+  empty: None"""
+  if not idx:
+    return None
+  i = int(idx)
+  return i - 1 if i > 0 else n + i
+
 
 def parseFile(path):
   obj = {
@@ -28,9 +45,13 @@ def parseFile(path):
     "vn": [],
     "f": [],
   }
+  logger.debug('parsing "%s" file', path)
+
   data = tools.dataStructure()
 
   verticesCount = 0
+  hasUv = True
+  hasNormal = True
   tripletHashmap = {}
 
   file_path = Path(path)
@@ -47,7 +68,7 @@ def parseFile(path):
       match arr[0]:
         case "mtllib":
           matFile = " ".join(line.strip().split(" ")[1:])
-          materials = parseMaterials(os.path.dirname(path)+f"/{matFile}")
+          materials = parseMaterials(os.path.dirname(path) + f"/{matFile}")
         case "usemtl":
           currentMat = arr[1]
         case "v":
@@ -64,37 +85,53 @@ def parseFile(path):
             vnNone = [None for i in obj["vn"][0]] if len(obj["vn"]) > 0 else None
         case "f":
           keys = arr[1:]
+          if len(keys) < 3:
+            continue
           newKeys = [keys[0], keys[1], keys[2]]
           for i in range(3, len(keys)):
-            newKeys.append(keys[0])
-            newKeys.append(keys[i - 1])
-            newKeys.append(keys[i])
-          keys = newKeys
-          parsed = [[int(v) - 1 if v is not None else None for v in i.split("/")] for i in keys]
-          for i in range(len(keys)):
-            verticesIndex = tripletHashmap.get(keys[i], None)
+            newKeys += [keys[0], keys[i - 1], keys[i]]
+          for key in newKeys:
+            # resolve relative indices now, so the hashmap key is unambiguous
+            parts = (key.split("/") + ["", ""])[:3]
+            vi = resolve(parts[0], len(obj["v"]))
+            ti = resolve(parts[1], len(obj["vt"]))
+            ni = resolve(parts[2], len(obj["vn"]))
+            cacheKey = (vi, ti, ni, currentMat)
 
-            if verticesIndex is None:
-              data["vertices"].append(obj["v"][parsed[i][0]] if parsed[i][0] is not None else vNone)
-              data["colors"].append(materials.get(currentMat,[1,1,1]))
-              if len(parsed[i]) > 1 and parsed[i][1] is not None:
-                data["uvs"].append(obj["vt"][parsed[i][1]])
-              if len(parsed[i]) > 2 and parsed[i][2] is not None:
-                data["normals"].append(obj["vn"][parsed[i][2]])
+            index = tripletHashmap.get(cacheKey)
+            if index is None:
+              data["vertices"].append(obj["v"][vi])
+              data["colors"].append(materials.get(currentMat, [1.0, 1.0, 1.0]))
 
-              tripletHashmap[keys[i]] = verticesCount
-              verticesIndex = verticesCount
+              # always append something, so all arrays stay the same length
+              if ti is None:
+                data["uvs"].append([0.0, 0.0])
+                hasUv = False
+              else:
+                data["uvs"].append(obj["vt"][ti])
+
+              if ni is None:
+                data["normals"].append([0.0, 0.0, 0.0])
+                hasNormal = False
+              else:
+                data["normals"].append(obj["vn"][ni])
+
+              index = tripletHashmap[cacheKey] = verticesCount
               verticesCount += 1
 
-            data["indices"].append(verticesIndex)
-        # case "l":
-        #   parsed = _parseLineStrip(arr)
-        #   if parsed is not None and parsed:
-        #     obj["l"].append(parsed)
+            data["indices"].append(index)
         case "#":
           continue
         case _:
           continue
+
+  # partial UVs/normals are unusable
+  if not hasUv:
+    data["uvs"] = []
+  if not hasNormal:
+    data["normals"] = []
+  logger.debug("parsing finished")
+
   tools.dataToNumpyArray(data)
   tools.vertexNeighborNormals(data) if data["normals"].size == 0 else None
   # temp override default texture mapping of colors            vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
