@@ -110,7 +110,7 @@
   image("images/gui.png", width: 100%),
   caption: [Application at startup],
 )
-This project aims to provide an application displaying 3D objects using the OpenGL pipeline. The user can interact with a graphical interface to chose which objects are displayed. In particular, basic 2D and 3D objects are defined by default.
+test This project aims to provide an application displaying 3D objects using the OpenGL pipeline. The user can interact with a graphical interface to chose which objects are displayed. In particular, basic 2D and 3D objects are defined by default.
 This application can also be used to visualize atoms following the Bohr model and some simple molecules.
 
 To allow the user to further build on the existing project, we provide an interface for the user to create their own scenes (see @scenes). A scene is defined as a collection of objects and lights. The user has the ability to modify the aspect of the objects by changing the lighting program used, as well as the materials used in the scenes.
@@ -300,7 +300,7 @@ All shape generators follows a similar process like the following graph, with co
   image("images/shapeGen-full.svg", width: 100%),
   caption: [General shape generation flow],
 )
-=== Data format
+=== Data format <data_format>
 
 We chose to bundle object data for rendering under the form:
 ```python
@@ -313,7 +313,7 @@ data = {
   "mode":    # GL mode, indicating the rendering mode (eg: GL\_TRIANGLES, GL\_TRIANGL_STRIP, ...)
 }
 ```
-All shape generators and `.obj`/`.mtl` files parsing outputs are converted to this format before being passed into the rendering pipeline:
+All shape generators and `.ply`/`.obj`/`.mtl` files parsing outputs are converted to this format before being passed into the rendering pipeline:
 - `vertices` and `indices` are generated/parsed per shape/file.
 - `colors`:
   - from `.mtl` file parsing, for simplicity we only parse the materials' `Kd` field as flat vertex colors
@@ -326,6 +326,8 @@ All shape generators and `.obj`/`.mtl` files parsing outputs are converted to th
 - `normals`: generated from `vertices` and `indices` using an algorithm
 
 === Obj files
+The parsing of `.obj` files is implemented in the `src/obj_loader.py` file.
+
 From the wiki, we can see that `.obj` files are text files with the syntax:
 ```md
 <fieldtype> <field1> <field2> <etc..>
@@ -351,6 +353,19 @@ The parsing goes as follows:
   - if it already exists, we append the corresponding index to the output `indices`
   - otherwise, we append to the `vertices`, `uvs`, `normals`, and the currently set `colors` and take the newly appended position to store in `tripplets`, we append the index to the output `indices`
 The result is a properly formated `data` object to be passed into the pipeline.
+
+=== Ply files
+The parsing of `.ply` files is implemented in the `src/ply_loader.py` file.
+
+The parsing process can be separated in 2 steps:
+- reading header
+- reading mesh data
+
+The header indicates the format of the data (ascii or binary, little or big endian ), as well as the structure of the lines. After reading the header, we already know the rest of the file length and data order.
+The program then proceeds to read the body token by token thanks to the information of the header.
+
+All the colled data is aggregated in the structure defined in @data_format and returned.
+
 === 2D shapes
 ==== `ngonGenerator` helper function
 Generating circles comes up a few times in some of the 2D and 3D shapes generation methods, thus a helper function like `ngonGenerator` is very convenient.
@@ -673,20 +688,72 @@ Using this we implement a few bindings:
 - `"<F11>"`: Toggle Sidebar
 - `"<Escape>"`: Exit out of entry text box or close the program
 
-== Common Objects in Context (COCO) dataset format
-=== COCO file
+== Synthetic Image Generation - Ground Truth Labels
+In computer vision field, numerous taks demand image datasets. These datasets can be used for training Machine Learning models, or to test various algorithms. Historically, these datasets have been created from real world pictures, captured through a physical device. This introduces noise and inacurracy, through the very process of capturing images (for example an imperfect lens). Furthermore, the images have to be processed by a human in order to add some data, like labels or shape masks. As the datasets grows in size, this represents a long and repetitive task.
+
+Nowadays, a lot of datasets are created and labelled automatically thanks to rendering engines, allowing the generation of massive data and precise annotations. In this project, we implement a way of generating such datasets, and provide automatic annotations.
+
+For a single view, we can render the scene in different formats, for a diversity of applications.
+
+=== Depth Estimation
+This rendering mode displays on each pixel the distance from the near plane of the camera to the object. This distance is linearized from the depth buffer between the near and far plane, so a full black pixel correspond to an object next to the camera and a full white pixel correspond to an object located at the far plane. \
+In practice, an object cannot be sticked to the camera because of the near plane so the only fully black pixels correspond to an absence of object (no fragment produced).
+
+*Implementation*\
+To render such a picture, the scene is rendered normally until the fragment shader. The vertex shader produces the fragment position on the screen, with the depth information. However this depth is not linear because of the perspective transformation.
+This means that the information will be degraded as the objects get closer to the far plane. We chose to linearize the depth by applying these formula to the depth in output of the vertex shader:
+#align(center)[$
+  z_("ndc") = "fragment_depth" times 2 - 1 \
+  z = (-2 "far" "near") / (z_"ndc" ("far" - "near") - ("far" + "near"));
+$]
+
+Hence $z$ is the distance between the camera and the object in the fragment considered (pixel). To display this information through the grayscale, we divide $z$ by the far plane distance (`far`) to normalize it between 0 and 1.
+
+Results can be seen in @depth_results.
+
+#underline[Note]: Due to the fact that we operate an inversion in regard to $z_"ndc"$, some information is lost due to the precision of the initial depth given by the vertex shader.
+
+=== Instance Segmentation
+This rendering mode displays each object as a flat, solid colored mask. Each object instance has its own color and the depth ordering of the objects is respected.
+
+*Implementation*\
+For this rendering mode, we apply the same method as for the depth rendering: only the fragment shader changes compared to a normal rendering.
+When this mode is used, each object is attributed a different color that is passed to the shading program via the `vec3 iColor` uniform. Then, the fragment shader simply return this color. This allow each object to be rendered as a colored mask, while keeping the correct depth ordering of the scene.
+
+Results can be seen in @masks_results.
+
+=== Object Detection with Labelled Bounding Boxes
+This rendering mode displays the scene with each object associated delimited by a bounding boxed labelled with its name. The bounding boxes are dynamically computed as the scene is rendered.
+
+The bounding boxe caracteristics can then be exported to COCO format (see @coco).
+
+*Implementation*\
+In this rendering mode, each frame is rendered in 2 passes:
+- a first for the normal render
+- a second to compute the overlay (the bouding boxes and their labels)
+
+During this second pass, each object is treated separately from the others. One object is rendered offscreen on the GPU, with the mask rendering mode. This way, the fragment shader part is very cheap to compute, and produces enough information to infer the object bounding box. The array produced by the offscreen rendering is then transferred to the CPU that determines the object bounding box.
+
+We accumulate like this the bounding boxes caracteristics of every object in the scene, before creating the overlay on the CPU (a transparent frame with the bounding boxes and labels drawn) and applying it on the current frame, drawn in the first pass.
+
+However, this approach causes at least twice as much computations (without counting the context switches and offscreen buffer clears) so this rendering mode produces much higher frame computation times.
+
+Results can be seen in @bbox_results.
+
+=== Common Objects in Context (COCO) dataset format <coco>
+==== COCO file
 COCO is a dataset involving a annotation file and a large set of images that the file describes.
 It is a `.json` file given by the following format:
 
 #figure(
   ```json
-{
-  "info": {},         // Optional
-  "licenses": [],     // Optional
-  "images": [],
-  "annotations": [],
-  "categories": []
-}
+  {
+    "info": {},         // Optional
+    "licenses": [],     // Optional
+    "images": [],
+    "annotations": [],
+    "categories": []
+  }
   ```,
   caption: [Annotation file adapted from https://docs.aws.amazon.com/rekognition/latest/customlabels-dg/md-coco-overview.html],
 )
@@ -694,12 +761,12 @@ For the sake of simplicity in this project, we will only be filling out the necc
 
 Before you can export labels and images, the user needs to load coco.json file with a specified file path. By default, this file is located at `./outputs/coco.json`
 
-=== Images
+==== Images
 Upon a press of a button, the `viewport` will capture the current frame displayed and a list of bounding boxes generated from the `labeling` system.
 This data is then used to build up an image information list
 ```python
 coco_image = {
-  "id"            : image_id,  
+  "id"            : image_id,
   "width"         : self.viewport.window_size[0],
   "height"        : self.viewport.window_size[1],
   "file_name"     : Path(image_path).name,
@@ -712,18 +779,18 @@ We recognize the possibilty of having duplicates in hopes that the dateset will 
 
 Then, this image data is appended to the dictionary copy, along with the image file itself being saved to a folder in the same directory as the coco file with the same name.
 
-=== Categories
+==== Categories
 We are assuming that "categories" are reused when describing objects of the same kind in images (so if a scene contains multiple copy of the same object, they will use the same category in their annotations).
 Each category object follows this format.
 ```python
 cat = {
     "id"   : cat_id,  # Category id is also generated based on the existing categories count
-    "name" : c        # Name is captured directly from the labeling system 
+    "name" : c        # Name is captured directly from the labeling system
 }
 ```
-From each bounding box and object name pairs given by the `labeling` system, we check if the coco dataset already contain a category with that name, and add a new one of not, then a translation dictionary between the category name and id `cat_dict` is created to be used in the annotation phase. 
+From each bounding box and object name pairs given by the `labeling` system, we check if the coco dataset already contain a category with that name, and add a new one of not, then a translation dictionary between the category name and id `cat_dict` is created to be used in the annotation phase.
 
-=== Annotations
+==== Annotations
 With the given bounding box and object name pairs, the image id, the category name-id dictionary from previous sections, we can construct annotation objects:
 ```python
 for a in bounding_boxes:
@@ -813,6 +880,23 @@ Using our scene builder, we can combine several objects imported from different 
   ),
   caption: [Complex scene (tea and table)],
 )
+
+== Synthetic image generation
+
+#figure(
+  [],
+  caption: [],
+) <masks_results>
+
+#figure(
+  [],
+  caption: [],
+) <depth_results>
+
+#figure(
+  [],
+  caption: [],
+) <bbox_results>
 
 = Challenges encountered
 == Camera

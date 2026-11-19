@@ -293,10 +293,10 @@ class App(tk.Tk):
         command=self.change_pipeline_mode,
       ),
     )
-    self.bs = BoxScaler(self,self.viewport,self.sidebar,"horizontal")
+    self.bs = BoxScaler(self, self.viewport, self.sidebar, "horizontal")
     self.bs.grid(row=0, column=1, sticky="nsew")
-    
-    self.cocopath_var = tk.StringVar(self,value="./output/coco.json")
+
+    self.cocopath_var = tk.StringVar(self, value="./output/coco.json")
     self.coco_dict = None
     self.coco_path = self.cocopath_var.get()
     self.table.newRow(
@@ -304,35 +304,33 @@ class App(tk.Tk):
       self.table.entry(
         textvariable=self.cocopath_var,
       ),
-      )
-    self.table.newRow(
-      self.table.button(
-        text = "Load Coco",
-        command = self.loadCoco
-      ),
-      self.table.button(
-        text = "Add to Coco",
-        command = lambda: self.viewport.evilMessedUpPrograming.set(True)
-      )
     )
-    
+    self.table.newRow(
+      self.table.button(text="Load Coco", command=self.loadCoco),
+      self.table.button(
+        text="Add to Coco", command=lambda: self.viewport.evilMessedUpPrograming.set(True)
+      ),
+    )
+
     self.bindKeyboardInputs()
 
     self.after(100, self.viewport.printContext)
     self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     self.viewport.mainloop()
+
   def addToCoco(self):
     pass
+
   def loadCoco(self):
     try:
-      with open(self.cocopath_var.get(), 'r') as f:
-        logger.debug("Loaded coco at: "+self.cocopath_var.get())
+      with open(self.cocopath_var.get(), "r") as f:
+        logger.debug("Loaded coco at: " + self.cocopath_var.get())
         input = json.load(f)
         self.coco_dict = {
-          "images"      : input.get("images"      ,[]),
-          "annotations" : input.get("annotations" ,[]),
-          "categories"  : input.get("categories"  ,[]),
+          "images": input.get("images", []),
+          "annotations": input.get("annotations", []),
+          "categories": input.get("categories", []),
         }
         self.coco_path = self.cocopath_var.get()
     except FileNotFoundError:
@@ -344,51 +342,61 @@ class App(tk.Tk):
       logger.error(e)
       return
 
-  def exportLabelAndImage(self,bounding_boxes,data):
+  def exportLabelAndImage(self, bounding_boxes, data):
     if self.coco_dict is None:
       logger.error("Load a coco file before exporting labels")
       return
-    image = ImageOps.flip(Image.frombytes("RGBA", (self.viewport.window_size[0], self.viewport.window_size[1]),data))
+    image = ImageOps.flip(
+      Image.frombytes("RGBA", (self.viewport.window_size[0], self.viewport.window_size[1]), data)
+    )
     image_id = len(self.coco_dict["images"])
-    image_path = Path(self.coco_path).parent / f"{Path(self.coco_path).stem}_images" / f"{image_id}.png"
+    image_path = (
+      Path(self.coco_path).parent / f"{Path(self.coco_path).stem}_images" / f"{image_id}.png"
+    )
     image_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(image_path, "PNG")
     coco_image = {
-      "id"            : image_id,  
-      "width"         : self.viewport.window_size[0],
-      "height"        : self.viewport.window_size[1],
-      "file_name"     : Path(image_path).name,
-      "date_captured" : datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+      "id": image_id,
+      "width": self.viewport.window_size[0],
+      "height": self.viewport.window_size[1],
+      "file_name": Path(image_path).name,
+      "date_captured": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
     self.coco_dict["images"].append(coco_image)
 
     cat = set()
     [cat.add(i[0]) for i in bounding_boxes]
     cat_dict = {}
-    [cat_dict.update({c["name"]: c["id"]}) for c in self.coco_dict["categories"] if c["name"] in cat]
+    [
+      cat_dict.update({c["name"]: c["id"]})
+      for c in self.coco_dict["categories"]
+      if c["name"] in cat
+    ]
     cat_new = [c for c in cat if c not in cat_dict]
     cat_id = len(self.coco_dict["categories"])
     for c in cat_new:
-      self.coco_dict["categories"].append({"id":cat_id,"name":c})
+      self.coco_dict["categories"].append({"id": cat_id, "name": c})
       cat_dict[c] = cat_id
       cat_id += 1
 
     for a in bounding_boxes:
-      self.coco_dict["annotations"].append({
-        "category_id": cat_dict[a[0]],
-        "image_id": image_id,
-        "bbox": a[1],
-      })
+      self.coco_dict["annotations"].append(
+        {
+          "category_id": cat_dict[a[0]],
+          "image_id": image_id,
+          "bbox": a[1],
+        }
+      )
 
     Path(self.coco_path).parent.mkdir(parents=True, exist_ok=True)
     with open(self.coco_path, "w") as f:
-      json.dump(self.coco_dict,fp = f)
+      json.dump(self.coco_dict, fp=f)
 
   def bindKeyboardInputs(self):
     inputGate = lambda: (
       isinstance(self.focus_get(), ttk.Entry) and not isinstance(self.focus_get(), ttk.Combobox)
     )
-    
+
     # janky hack
     sp = lambda v: inputGate() or self.lighting_var.set(v) or self.viewport.select_program(v)
     # Flat shading
@@ -429,9 +437,9 @@ class App(tk.Tk):
       ),
     )
     # Save image
-    self.bind("<Key-s>",lambda _: inputGate() or self.saveImage())
+    self.bind("<Key-s>", lambda _: inputGate() or self.saveImage())
     # Save label
-    self.bind("<Key-l>",lambda _: inputGate() or self.viewport.evilMessedUpPrograming.set(True))
+    self.bind("<Key-l>", lambda _: inputGate() or self.viewport.evilMessedUpPrograming.set(True))
     # Kill
     self.bind("<Escape>", lambda _: self.focus_set() if inputGate() else self.destroy())
     # Render modes:
@@ -446,56 +454,78 @@ class App(tk.Tk):
     )
     self.bind("<Key-r>", lambda _: inputGate() or crm())
     # full viewport
-    showhideSidebar = tk.BooleanVar(self,False)
+    showhideSidebar = tk.BooleanVar(self, False)
+
     def toggleShowhideSidebar(self):
       showhideSidebar.set(not showhideSidebar.get())
       if showhideSidebar.get():
         self.viewport.grid(columnspan=3)
-        self.helpTable.grid(column = 3) 
+        self.helpTable.grid(column=3)
         self.bs.grid_remove()
       else:
         self.viewport.grid(columnspan=1)
-        self.helpTable.grid(column = 0) 
+        self.helpTable.grid(column=0)
         self.bs.grid()
       self.helpTable.grid_remove() if not self.helpTable_var.get() else None
+
     self.bind("<F11>", lambda _: toggleShowhideSidebar(self))
-    self.bind("<KeyPress-Control_L>",   lambda event: (self.viewport.mouse.update({"ctrl_down": True }),logger.debug("Ctrl down")) if not self.viewport.mouse["ctrl_down"] else None)
-    self.bind("<KeyRelease-Control_L>", lambda event: (self.viewport.mouse.update({"ctrl_down": False}),logger.debug("Ctrl up"  )) if self.viewport.mouse["ctrl_down"] else None)
+    self.bind(
+      "<KeyPress-Control_L>",
+      lambda event: (
+        (self.viewport.mouse.update({"ctrl_down": True}))
+        if not self.viewport.mouse["ctrl_down"]
+        else None
+      ),
+    )
+    self.bind(
+      "<KeyRelease-Control_L>",
+      lambda event: (
+        (self.viewport.mouse.update({"ctrl_down": False}))
+        if self.viewport.mouse["ctrl_down"]
+        else None
+      ),
+    )
     # help
     self.helpTable = Tablerone(self, col=2)
-    self.helpTable.grid(row=0, column=0,sticky="ne")
+    self.helpTable.grid(row=0, column=0, sticky="ne")
     self.helpTable_var = tk.BooleanVar(self, value=True)
-    
-    def nr(a, b): 
+
+    def nr(a, b):
       self.helpTable.newRow(
-        self.helpTable.label(text=a), 
-        self.helpTable.label(text=b) if b is not None else 
-        self.helpTable.none())
+        self.helpTable.label(text=a),
+        self.helpTable.label(text=b) if b is not None else self.helpTable.none(),
+      )
+
     nr("Keyboard inputs:", None)
     nr(f"{' Shader ':=^20}", None)
-    nr("F"  , "flat")
-    nr("G"  , "goureaud")
-    nr("P"  , "phong")
-    nr("B"  , "blinn")
-    nr("I"  , "vertex color")
-    nr("U"  , "texture unwrap")
+    nr("F", "flat")
+    nr("G", "goureaud")
+    nr("P", "phong")
+    nr("B", "blinn")
+    nr("I", "vertex color")
+    nr("U", "texture unwrap")
     nr(f"{' Render ':=^20}", None)
-    nr("T"  , "toggle texture")
-    nr("W"  , "toggle wireframe")
-    nr("C"  , "toggle backface culling")
-    nr("R"  , "rendering modes")
+    nr("T", "toggle texture")
+    nr("W", "toggle wireframe")
+    nr("C", "toggle backface culling")
+    nr("R", "rendering modes")
     nr(f"{' Other ':=^20}", None)
-    nr("S"  , "save image")
-    nr("L"  , "add to Coco")
+    nr("S", "save image")
+    nr("L", "add to Coco")
     nr("Esc", "exit program")
     nr("f11", "toggle sidebar")
-    nr("ctrl","zoom & pan speed x10")
-    nr("H"  , "toggle this panel")
-    self.bind("<Key-h>",lambda _: (
-      inputGate() 
-      or self.helpTable_var.set(not self.helpTable_var.get()) 
-      or (self.helpTable.grid() if self.helpTable_var.get() else self.helpTable.grid_remove()))
-      or logger.debug("help panel toggled")
+    nr("ctrl", "zoom & pan speed x10")
+    nr("H", "toggle this panel")
+    self.bind(
+      "<Key-h>",
+      lambda _: (
+        (
+          inputGate()
+          or self.helpTable_var.set(not self.helpTable_var.get())
+          or (self.helpTable.grid() if self.helpTable_var.get() else self.helpTable.grid_remove())
+        )
+        or logger.debug("help panel toggled")
+      ),
     )
 
   def bindUpdateFilepath(self):
@@ -732,8 +762,15 @@ class AppOgl(OpenGLFrame):
 
     self.objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
     self.objects_rendered = {}  # set containing the indices of the pipeline objects to be rendered associated with the object name
-    self.evilMessedUpPrograming = tk.BooleanVar(value = False)
-    self.evilMessedUpPrograming.trace_add(mode="write",callback = lambda a,b,m: logger.debug("Saving to coco") if m =="write" and self.evilMessedUpPrograming.get() else None)
+    self.evilMessedUpPrograming = tk.BooleanVar(value=False)
+    self.evilMessedUpPrograming.trace_add(
+      mode="write",
+      callback=lambda a, b, m: (
+        logger.debug("Saving to coco")
+        if m == "write" and self.evilMessedUpPrograming.get()
+        else None
+      ),
+    )
     self.nb_lights = 1
     self.update_lights(self.nb_lights)
     self.mouse = {
@@ -944,7 +981,7 @@ class AppOgl(OpenGLFrame):
         case 3:
           self.mb2_callback(event.type)
         case 4:
-          self.scroll_callback(0,  5)
+          self.scroll_callback(0, 5)
         case 5:
           self.scroll_callback(0, -5)
         case _:
@@ -957,7 +994,8 @@ class AppOgl(OpenGLFrame):
     # update mb position only when a button is pressed
     if self.mouse["mb1_down"] or self.mouse["mb2_down"]:
       self.mouse["mb_x"] = xpos
-      self.mouse["mb_y"] = height - ypos # flip so y=0 is bottom
+      self.mouse["mb_y"] = height - ypos  # flip so y=0 is bottom
+
   def mb1_callback(self, action):
     if action == tk.EventType.ButtonPress:
       self.mouse["mb1_down"] = True
@@ -1315,8 +1353,7 @@ class AppOgl(OpenGLFrame):
       )
     )
     uniforms = self.cam.update(
-      uniforms=np.concatenate((self.default_static_uniforms, uniforms)), 
-      mouse= self.mouse
+      uniforms=np.concatenate((self.default_static_uniforms, uniforms)), mouse=self.mouse
     )
 
     self.pipeline.draw(
@@ -1334,8 +1371,10 @@ class AppOgl(OpenGLFrame):
       if self.evilMessedUpPrograming.get():
         self.evilMessedUpPrograming.set(False)
         self.root.exportLabelAndImage(
-          bounding_boxes, 
-          GL.glReadPixels(0,0,self.window_size[0],self.window_size[1],GL.GL_RGBA,GL.GL_UNSIGNED_BYTE)
+          bounding_boxes,
+          GL.glReadPixels(
+            0, 0, self.window_size[0], self.window_size[1], GL.GL_RGBA, GL.GL_UNSIGNED_BYTE
+          ),
         )
       if self.pipeline_mode == "labels":
         colors = generate_colors(len(bounding_boxes))
