@@ -312,7 +312,7 @@ class App(tk.Tk):
       ),
       self.table.button(
         text = "Add to Coco",
-        command = lambda: self.viewport.evilMessedUpPrograming.set(True)
+        command = lambda: self.viewport.exportToCoco_flag.set(True)
       )
     )
     
@@ -431,7 +431,7 @@ class App(tk.Tk):
     # Save image
     self.bind("<Key-s>",lambda _: inputGate() or self.saveImage())
     # Save label
-    self.bind("<Key-l>",lambda _: inputGate() or self.viewport.evilMessedUpPrograming.set(True))
+    self.bind("<Key-l>",lambda _: inputGate() or self.viewport.exportToCoco_flag.set(True))
     # Kill
     self.bind("<Escape>", lambda _: self.focus_set() if inputGate() else self.destroy())
     # Render modes:
@@ -732,8 +732,8 @@ class AppOgl(OpenGLFrame):
 
     self.objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
     self.objects_rendered = {}  # set containing the indices of the pipeline objects to be rendered associated with the object name
-    self.evilMessedUpPrograming = tk.BooleanVar(value = False)
-    self.evilMessedUpPrograming.trace_add(mode="write",callback = lambda a,b,m: logger.debug("Saving to coco") if m =="write" and self.evilMessedUpPrograming.get() else None)
+    self.exportToCoco_flag = tk.BooleanVar(value = False)
+    self.exportToCoco_flag.trace_add(mode="write",callback = lambda a,b,m: logger.debug("Saving to coco") if m =="write" and self.exportToCoco_flag.get() else None)
     self.nb_lights = 1
     self.update_lights(self.nb_lights)
     self.mouse = {
@@ -1323,7 +1323,7 @@ class AppOgl(OpenGLFrame):
       uniforms=uniforms, to_draw=self.objects_rendered.keys(), mode=self.pipeline_mode
     )
 
-    if self.pipeline_mode == "labels" or self.evilMessedUpPrograming.get():
+    if self.pipeline_mode == "labels" or self.exportToCoco_flag.get():
       bounding_boxes = []
       for obj_id, obj_name in self.objects_rendered.items():
         frame_array = self.pipeline.render_to_array(
@@ -1331,8 +1331,8 @@ class AppOgl(OpenGLFrame):
         )
         # TODO: get bounding box on low res for perf
         bounding_boxes.append((obj_name, get_bounding_box(frame_array)))
-      if self.evilMessedUpPrograming.get():
-        self.evilMessedUpPrograming.set(False)
+      if self.exportToCoco_flag.get():
+        self.exportToCoco_flag.set(False)
         self.root.exportLabelAndImage(
           bounding_boxes, 
           GL.glReadPixels(0,0,self.window_size[0],self.window_size[1],GL.GL_RGBA,GL.GL_UNSIGNED_BYTE)
