@@ -35,6 +35,8 @@ def resolve(idx, n):
   if not idx:
     return None
   i = int(idx)
+  if i < 0:
+    print("aaaaa")
   return i - 1 if i > 0 else n + i
 
 

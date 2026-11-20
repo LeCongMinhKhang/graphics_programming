@@ -1,4 +1,6 @@
 from src.tkwindow import AppOgl
+
+from pathlib import Path
 import numpy as np
 
 
@@ -8,9 +10,13 @@ class Scene:
     self.color_mode = "color"
     self.gl_app = gl_app
 
-  def add_object(self, name: str, filePath: str = None, data_f: lambda: dict = None):
+  def add_object(
+    self, name: str, filePath: str = None, data_f: lambda: dict = None, label: str = None
+  ):
     """Returns (obj_id, program_name)"""
-    return self.gl_app.reserve_object(obj_name=name, filePath=filePath, data_f=data_f)
+    if name == "file" and label is None:
+      label = Path(filePath).stem
+    return self.gl_app.reserve_object(obj_name=name, filePath=filePath, data_f=data_f, label=label)
 
   def update_object(
     self,

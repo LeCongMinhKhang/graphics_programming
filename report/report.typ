@@ -882,21 +882,49 @@ Using our scene builder, we can combine several objects imported from different 
 )
 
 == Synthetic image generation
+#grid(
+  columns: 2,
+  gutter: 1em,
+  [#figure(
+    image("images/castle_rgb.png", width: 100%),
+    caption: [original image],
+  ) <rgb_results>],
+  [#figure(
+    image("images/castle_mask.png", width: 100%),
+    caption: [Masks],
+  ) <masks_results>],
 
-#figure(
-  [],
-  caption: [],
-) <masks_results>
+  [#figure(
+    image("images/castle_depth.png", width: 100%),
+    caption: [Depth],
+  ) <depth_results>],
+  [#figure(
+    image("images/castle_labels.png", width: 100%),
+    caption: [Bounding boxes],
+  ) <bbox_results>],
+)
+// #grid(
+// columns: 2,
+// figure(
+//   image("images/castle_mask.png", width: 100%),
+//   caption: [],
+// )<masks_results>,
 
-#figure(
-  [],
-  caption: [],
-) <depth_results>
+// figure(
+//   image("images/castle_mask.png", width: 100%),
+//   caption: [],
+// ), <masks_results>,
 
-#figure(
-  [],
-  caption: [],
-) <bbox_results>
+// figure(
+//   image("images/castle_depth.png", width: 100%),
+//   caption: [],
+// ), <depth_results>,
+
+// figure(
+//   image("images/castle_labels.png", width: 100%),
+//   caption: [],
+// ), <bbox_results>,
+// )
 
 = Challenges encountered
 == Camera

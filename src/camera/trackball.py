@@ -48,7 +48,7 @@ class Trackball(Camera):
 
   def _projection_matrix(self, winsize):
     """Projection matrix with z-clipping range adaptive to distance"""
-    z_range = vec(0.1, 2.0) * self.distance  # proportion to dist
+    z_range = vec(0.1, 3.0) * self.distance  # proportion to dist
     return perspective(35, winsize[0] / winsize[1], *z_range)
 
   def matrix(self):
@@ -77,8 +77,11 @@ class Trackball(Camera):
         if mouse["mb1_down"]:
           self.drag(self.mouse_old, (mouse["mb_x"], mouse["mb_y"]), winsize)
         elif mouse["mb2_down"]:
-          cd = (10 if mouse["ctrl_down"] else 1)
-          self.pan((self.mouse_old[0] * cd, self.mouse_old[1] * cd), (mouse["mb_x"] * cd, mouse["mb_y"] * cd))
+          cd = 10 if mouse["ctrl_down"] else 1
+          self.pan(
+            (self.mouse_old[0] * cd, self.mouse_old[1] * cd),
+            (mouse["mb_x"] * cd, mouse["mb_y"] * cd),
+          )
         self.mouse_old = (mouse["mb_x"], mouse["mb_y"])
 
     self.zoom(mouse["scroll_y"], winsize[1])

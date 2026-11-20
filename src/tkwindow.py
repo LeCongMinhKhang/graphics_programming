@@ -304,16 +304,12 @@ class App(tk.Tk):
       self.table.entry(
         textvariable=self.cocopath_var,
       ),
-      )
+    )
     self.table.newRow(
+      self.table.button(text="Load Coco", command=self.loadCoco),
       self.table.button(
-        text = "Load Coco",
-        command = self.loadCoco
+        text="Add to Coco", command=lambda: self.viewport.exportToCoco_flag.set(True)
       ),
-      self.table.button(
-        text = "Add to Coco",
-        command = lambda: self.viewport.exportToCoco_flag.set(True)
-      )
     )
 
     self.bindKeyboardInputs()
@@ -443,7 +439,7 @@ class App(tk.Tk):
     # Save image
     self.bind("<Key-s>", lambda _: inputGate() or self.saveImage())
     # Save label
-    self.bind("<Key-l>",lambda _: inputGate() or self.viewport.exportToCoco_flag.set(True))
+    self.bind("<Key-l>", lambda _: inputGate() or self.viewport.exportToCoco_flag.set(True))
     # Kill
     self.bind("<Escape>", lambda _: self.focus_set() if inputGate() else self.destroy())
     # Render modes:
@@ -766,8 +762,13 @@ class AppOgl(OpenGLFrame):
 
     self.objects = {}  # associates the name of an object (eg "cube") to a pair of (<used_objects>, <index_array_of_objects_loaded>)
     self.objects_rendered = {}  # set containing the indices of the pipeline objects to be rendered associated with the object name
-    self.exportToCoco_flag = tk.BooleanVar(value = False)
-    self.exportToCoco_flag.trace_add(mode="write",callback = lambda a,b,m: logger.debug("Saving to coco") if m =="write" and self.exportToCoco_flag.get() else None)
+    self.exportToCoco_flag = tk.BooleanVar(value=False)
+    self.exportToCoco_flag.trace_add(
+      mode="write",
+      callback=lambda a, b, m: (
+        logger.debug("Saving to coco") if m == "write" and self.exportToCoco_flag.get() else None
+      ),
+    )
     self.nb_lights = 1
     self.update_lights(self.nb_lights)
     self.mouse = {
@@ -1139,7 +1140,7 @@ class AppOgl(OpenGLFrame):
     program_name = ""
     color_mode = ""
     if scene is None and name == "file":
-      self.reserve_object("file", filePath)
+      self.reserve_object("file", filePath, label=Path(filePath).stem)
       program_name = "interpolation"  # default shader program for obj files
       color_mode = "color"  # default coloring mode for obj files
     else:
@@ -1293,7 +1294,9 @@ class AppOgl(OpenGLFrame):
     for name in self.objects.keys():
       self.free_object_category(name)
 
-  def reserve_object(self, obj_name: str, filePath: str = None, data_f: lambda: dict = None):
+  def reserve_object(
+    self, obj_name: str, filePath: str = None, data_f: lambda: dict = None, label: str = None
+  ):
     """
     If an object named <obj_name> is available, <data_f> will be ignored.
     """
@@ -1310,7 +1313,7 @@ class AppOgl(OpenGLFrame):
 
     entry = self.objects[obj_name]  # update the entry if object created
     obj_id = entry[1][entry[0] - 1]
-    self.objects_rendered[obj_id] = obj_name
+    self.objects_rendered[obj_id] = label or obj_name
     return obj_id, obj_program_name
 
   def create_material(self, name, uniforms):
